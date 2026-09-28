@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
@@ -34,6 +34,8 @@ function mediapipeWasm(): Plugin {
         const file = path.join(MEDIAPIPE_WASM_DIR, name);
         if (!WASM_FILES.includes(name) || !existsSync(file)) return next();
         res.setHeader('Content-Type', name.endsWith('.wasm') ? 'application/wasm' : 'text/javascript');
+        res.setHeader('Content-Length', String(statSync(file).size));
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         createReadStream(file).pipe(res);
       });
     },

@@ -81,6 +81,7 @@ export class PoseDetector {
   private lastTs = 0;
   private timings: number[] = [];
   private tuning: 'pending' | 'running' | 'done' = 'pending';
+  private closed = false;
 
   private constructor(
     private landmarker: PoseLandmarker,
@@ -165,6 +166,7 @@ export class PoseDetector {
     this.tuning = 'running';
     PoseDetector.build(this.fileset, this.model, 'CPU')
       .then((cpu) => {
+        if (this.closed) return cpu.close();
         const samples: number[] = [];
         for (let i = 0; i < 4; i++) {
           const t0 = performance.now();
@@ -187,6 +189,7 @@ export class PoseDetector {
   }
 
   close(): void {
+    this.closed = true;
     this.landmarker.close();
   }
 }

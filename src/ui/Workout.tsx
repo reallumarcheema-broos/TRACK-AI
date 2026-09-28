@@ -121,6 +121,7 @@ export function Workout(props: WorkoutProps) {
 
   useEffect(() => {
     let disposed = false;
+    let finished = false;
     let handle = 0;
     let stream: MediaStream | null = null;
     let detector: PoseDetector | null = null;
@@ -170,6 +171,7 @@ export function Workout(props: WorkoutProps) {
 
     const finish = () => {
       if (disposed) return;
+      finished = true;
       const result = summarizeSet(analyzer, { startedAt, endT: performance.now(), target });
       dispose();
       propsRef.current.onFinish(result, demo);
@@ -349,7 +351,12 @@ export function Workout(props: WorkoutProps) {
       }
     })();
 
-    return dispose;
+    return () => {
+      // Leaving mid-set (back gesture, close): silence the coach too. After a normal finish the
+      // closing line ("Done! Great set.") is allowed to play out over the summary.
+      if (!finished) voice.clear();
+      dispose();
+    };
     // The session is deliberately created once per mount (and per retry).
   }, [attempt]);
 
