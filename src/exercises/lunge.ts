@@ -1,6 +1,6 @@
 import type { ExerciseDef } from '../core/exercise';
 import { LM } from '../core/landmarks';
-import { kneeCollapse, minKneeAngleBothLegs, requiredFullBody, torsoLean } from './helpers';
+import { kneeCollapse, legsStraight, maxThighInclination, requiredFullBody, thighInclination, torsoLean } from './helpers';
 
 export const lunge: ExerciseDef = {
   id: 'lunge',
@@ -15,16 +15,22 @@ export const lunge: ExerciseDef = {
     why: 'Side-on I can judge depth and torso position. Facing me I can watch your front knee.',
   },
   required: requiredFullBody,
-  startPosition: (f) => {
-    const k = minKneeAngleBothLegs(f);
-    if (k === null) return 'Stand tall so I can see both legs';
-    return k < 150 ? 'Stand tall to begin' : null;
+  startPosition: (f, ctx) => {
+    const thigh = maxThighInclination(f, ctx.cal);
+    const straight = legsStraight(f);
+    if (thigh === null || straight === null) return 'Stand tall so I can see both legs';
+    return thigh > 25 || !straight ? 'Stand tall to begin' : null;
+  },
+  calibrate: {
+    lean: (f, cal) => torsoLean(f, cal),
   },
   rep: {
-    metric: (f) => minKneeAngleBothLegs(f),
-    start: 170,
-    target: 112,
-    ideal: 100,
+    direction: 'down',
+    // The front thigh drops toward parallel; the back thigh stays near vertical.
+    metric: (f, ctx) => maxThighInclination(f, ctx.cal),
+    start: 3,
+    target: 58,
+    ideal: 72,
     startTolerance: 12,
     shallow: {
       id: 'lunge_shallow',
@@ -64,7 +70,9 @@ export const lunge: ExerciseDef = {
       joints: [LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP],
       check: (f, ctx) => {
         const lean = torsoLean(f, ctx.cal);
-        return Number.isFinite(lean) ? lean > 32 : null;
+        if (!Number.isFinite(lean)) return null;
+        const base = Number.isFinite(ctx.cal.base.lean) ? ctx.cal.base.lean : 0;
+        return lean - base > 30;
       },
     },
     {
@@ -73,14 +81,16 @@ export const lunge: ExerciseDef = {
       cues: ['Keep your front knee over your toes', "Don't let your knee cave in", 'Knee out, in line with your foot'],
       severity: 'major',
       tip: 'Keep your front knee in line with your second toe — no collapsing inward.',
-      views: ['front', 'diagonal'],
+      // At an angle, forward knee travel projects sideways and looks like collapse.
+      views: ['front'],
       minProgress: 0.45,
       persistMs: 200,
       joints: [LM.LEFT_KNEE, LM.RIGHT_KNEE],
-      check: (f) => {
+      check: (f, ctx) => {
         const values: number[] = [];
         for (const side of ['left', 'right'] as const) {
-          if (f.kneeAngle(side, 'world') > 135) continue; // only the bending leg
+          const thigh = thighInclination(f, ctx.cal, side);
+          if (thigh === null || thigh < 35) continue; // only the bending (front) leg
           const c = kneeCollapse(f, side);
           if (c !== null) values.push(c);
         }

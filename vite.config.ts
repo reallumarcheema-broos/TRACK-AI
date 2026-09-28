@@ -3,7 +3,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
@@ -44,10 +44,32 @@ function mediapipeWasm(): Plugin {
   };
 }
 
+/**
+ * Production Content-Security-Policy: the page may only talk to itself, Google's model CDN and
+ * the optional debrief API. Besides hardening, this stops MediaPipe's built-in usage-metrics
+ * logger (odml.pa.googleapis.com) — the app promises that everything stays on the device.
+ */
+function contentSecurityPolicy(apiUrl: string | undefined): Plugin {
+  const api = apiUrl ? new URL(apiUrl).origin : '';
+  const csp = `connect-src 'self' blob: data: https://storage.googleapis.com ${api}`.trim();
+  return {
+    name: 'track-ai:csp',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`);
+    },
+  };
+}
+
 // `npm run dev:https` → self-signed HTTPS on the LAN so a phone can open the camera
 // (getUserMedia needs a secure context).
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), mediapipeWasm(), mode === 'https' ? basicSsl() : null],
+  plugins: [
+    react(),
+    mediapipeWasm(),
+    contentSecurityPolicy(loadEnv(mode, root, 'VITE_').VITE_COACH_API_URL),
+    mode === 'https' ? basicSsl() : null,
+  ],
   server: {
     host: mode === 'https' ? true : undefined,
     proxy: {

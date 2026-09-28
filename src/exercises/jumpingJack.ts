@@ -2,7 +2,7 @@ import type { ExerciseDef } from '../core/exercise';
 import { ankleSpread, requiredFullBody } from './helpers';
 
 const armRaise = (f: Parameters<ExerciseDef['required']>[0]): number | null =>
-  f.bySide((s) => f.armRaiseAngle(s, 'world'), ['shoulder', 'wrist', 'hip']);
+  f.bySide((s) => f.armRaiseAngle(s, f.spaceFor('frontal')), ['shoulder', 'wrist', 'hip']);
 
 export const jumpingJack: ExerciseDef = {
   id: 'jumping_jack',
@@ -29,6 +29,7 @@ export const jumpingJack: ExerciseDef = {
     spread: (f) => ankleSpread(f),
   },
   rep: {
+    direction: 'up',
     metric: (f) => armRaise(f),
     start: 20,
     target: 135,

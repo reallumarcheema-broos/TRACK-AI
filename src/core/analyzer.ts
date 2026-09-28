@@ -13,6 +13,7 @@ import { IMAGE_UP, PoseFrame, ViewTracker, WORLD_UP, bodyUp, type View } from '.
 import { BODY_REGIONS, LM, type BodySide, type PoseInput } from './landmarks';
 import { PoseSmoother } from './oneEuro';
 import { RepCounter, type RepEvent, type RepPhase, type RepWindow } from './repCounter';
+import { measureSegments } from './segments';
 import { median, normalize, type Vec3 } from './vec';
 
 export type AnalyzerStatus = 'searching' | 'positioning' | 'calibrating' | 'active';
@@ -155,7 +156,7 @@ export class WorkoutAnalyzer {
   private readonly tracks: Track[];
   private readonly ruleStates = new Map<string, RuleState>();
   private stable: StableSample[] = [];
-  private calibSamples: { metric: number[]; upI: Vec3[]; upW: Vec3[]; base: Record<string, number[]> } | null = null;
+  private calibSamples: { metric: number[]; upI: Vec3[]; upW: Vec3[]; frames: PoseFrame[] } | null = null;
   private calibStart = 0;
   /** When the athlete last entered the start position (setup only). */
   private inPositionSince: number | null = null;
@@ -398,7 +399,7 @@ export class WorkoutAnalyzer {
         this.setStatus('positioning', 'Hold still for a second…', events);
         return;
       }
-      this.calibSamples = { metric: [], upI: [], upW: [], base: {} };
+      this.calibSamples = { metric: [], upI: [], upW: [], frames: [] };
       this.calibStart = t;
       this.setStatus('calibrating', 'Hold it…', events);
     }
@@ -430,10 +431,7 @@ export class WorkoutAnalyzer {
       s.upI.push(bodyUp(f, 'image'));
       s.upW.push(bodyUp(f, 'world'));
     }
-    for (const [key, fn] of Object.entries(this.def.calibrate ?? {})) {
-      const v = fn(f, this.cal);
-      if (v !== null && Number.isFinite(v)) (s.base[key] ??= []).push(v);
-    }
+    s.frames.push(f);
   }
 
   private finishCalibration(): void {
@@ -444,18 +442,28 @@ export class WorkoutAnalyzer {
         : fallback;
     const upImage = medianVec(s.upI, IMAGE_UP);
     const upWorld = medianVec(s.upW, WORLD_UP);
-    const base: Record<string, number> = {};
-    for (const [k, vs] of Object.entries(s.base)) base[k] = median(vs);
-    this.cal = {
+    const cal: Calibration = {
       // Guard against a wildly tilted estimate (e.g. calibrating mid-lean).
       up: {
         image: upImage.y < -0.8 ? upImage : IMAGE_UP,
         world: upWorld.y < -0.7 ? upWorld : WORLD_UP,
       },
       restMetric: s.metric.length ? median(s.metric) : null,
-      base,
+      base: {},
       done: true,
     };
+    // True limb lengths while standing tall (see segments.ts), for depth-free angles.
+    const segs = s.frames.map(measureSegments);
+    for (const k of new Set(segs.flatMap((m) => Object.keys(m)))) {
+      const values = segs.map((m) => m[k]).filter((v): v is number => Number.isFinite(v));
+      if (values.length) cal.base[k] = median(values);
+    }
+    // Baselines are measured against the final "up" so rules compare like with like.
+    for (const [key, fn] of Object.entries(this.def.calibrate ?? {})) {
+      const values = s.frames.map((f) => fn(f, cal)).filter((v): v is number => v !== null && Number.isFinite(v));
+      if (values.length) cal.base[key] = median(values);
+    }
+    this.cal = cal;
     this.calibSamples = null;
   }
 

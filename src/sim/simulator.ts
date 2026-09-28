@@ -7,6 +7,7 @@ import type { PoseInput } from '../core/landmarks';
 import { POSE_BUILDERS, type Faults, type PoseParams } from './motions';
 import {
   completeSkeleton,
+  gaussian,
   LANDSCAPE_FLOOR_CAMERA,
   PORTRAIT_CAMERA,
   project,
@@ -43,6 +44,8 @@ export interface SimOptions {
   fps?: number;
   /** Landmark noise in normalised image units (world noise is scaled to match). */
   noise?: number;
+  /** Std-dev (metres) of a fixed per-joint depth error in the 3D world landmarks. */
+  depthError?: number;
   seed?: number;
   /** For holds (plank): seconds to hold. */
   holdSeconds?: number;
@@ -110,6 +113,7 @@ export function simulate(opts: SimOptions): SimFrame[] {
   const rand = rng(opts.seed ?? 1);
   const noise = opts.noise ?? 0.002;
   const aspect = camera.width / camera.height;
+  const depthBias = opts.depthError ? Array.from({ length: 33 }, () => gaussian(rand) * opts.depthError!) : undefined;
   const absent = opts.absentSeconds ?? 0;
   const leadIn = opts.leadInSeconds ?? 2.5;
   const tail = opts.tailSeconds ?? 1.5;
@@ -170,7 +174,7 @@ export function simulate(opts: SimOptions): SimFrame[] {
       }
     }
     const skeleton = completeSkeleton(build(params));
-    const pose = project(skeleton, { camera, yaw, imageNoise: noise, worldNoise: noise * 3, rand });
+    const pose = project(skeleton, { camera, yaw, imageNoise: noise, worldNoise: noise * 3, depthBias, rand });
     frames.push({ t: Math.round(time * 1000), pose, aspect });
   }
   return frames;

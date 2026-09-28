@@ -1,7 +1,8 @@
 import type { Calibration } from '../core/exercise';
 import { IMAGE_UP, type PoseFrame, type Space } from '../core/frame';
 import { LM, SIDE, type BodySide, type SideJoints } from '../core/landmarks';
-import { angleBetween, dist, dot, normalize, sub, type Vec3 } from '../core/vec';
+import { projectedAngle, segmentRef } from '../core/segments';
+import { angleBetween, dist, dot, normalize, scale, sub, type Vec3 } from '../core/vec';
 
 type Part = keyof SideJoints;
 
@@ -36,18 +37,31 @@ export const kneeAngle = (f: PoseFrame): number | null => f.bySide((s) => f.knee
 export const hipAngle = (f: PoseFrame): number | null => f.bySide((s) => f.hipAngle(s), ['shoulder', 'hip', 'knee']);
 export const elbowAngle = (f: PoseFrame): number | null => f.bySide((s) => f.elbowAngle(s), ARM);
 
-/** Smallest knee angle over both legs (lunges: both legs are visible even side-on). */
-export function minKneeAngleBothLegs(f: PoseFrame): number | null {
-  const values: number[] = [];
-  for (const side of ['left', 'right'] as const) {
-    if (!f.sideVisible(side, LEG, 0.3)) continue;
-    values.push(f.kneeAngle(side));
-  }
-  return values.length ? Math.min(...values) : null;
+/**
+ * "Legs straight" gate for the start position. Side-on the image angle is exact; otherwise
+ * require a straight-looking leg in the image and a lenient 3D check (3D depth is noisy, but
+ * it still tells a straight leg from a deep squat facing the camera).
+ */
+export function legsStraight(f: PoseFrame): boolean | null {
+  const knee = f.bySide((s) => {
+    const j = SIDE[s];
+    const img = f.angle(j.hip, j.knee, j.ankle, 'image');
+    if (f.view === 'side') return img;
+    return Math.min(img, f.angle(j.hip, j.knee, j.ankle, 'world') + 15);
+  }, ['hip', 'knee', 'ankle']);
+  return knee === null ? null : knee >= 150;
 }
 
 export function upFor(cal: Calibration, space: Space): Vec3 {
   return space === 'image' ? cal.up.image : cal.up.world;
+}
+
+/**
+ * Straightness of a joint (180 = straight), robust to depth errors: a straight limb projects
+ * as a straight line in any view, so take whichever of the image / 3D estimates is straighter.
+ */
+export function straightness(f: PoseFrame, a: number, b: number, c: number): number {
+  return Math.max(f.angle(a, b, c, 'image'), f.angle(a, b, c, 'world'));
 }
 
 /** Torso angle from the calibrated vertical, in the frame's preferred space. */
@@ -55,14 +69,56 @@ export function torsoLean(f: PoseFrame, cal: Calibration, space: Space = f.angle
   return f.torsoLean(upFor(cal, space), space);
 }
 
-/** Thigh angle from vertical: 0 standing, 90 thigh parallel to the floor. */
+/**
+ * Thigh inclination from vertical for one leg: 0 standing, 90 thigh parallel to the floor,
+ * >90 hips below knees. Exact in the image side-on; depth-free projection otherwise.
+ */
+export function thighInclination(f: PoseFrame, cal: Calibration, side: BodySide): number | null {
+  const j = SIDE[side];
+  if (!f.visible(j.hip, 0.35) || !f.visible(j.knee, 0.35)) return null;
+  if (f.view === 'side') return f.segmentAngleFromUp(j.knee, j.hip, cal.up.image, 'image');
+  const ref = segmentRef(f, cal, side === 'left' ? 'thigh_left' : 'thigh_right');
+  return ref === null ? null : projectedAngle(f, j.knee, j.hip, cal.up.image, ref);
+}
+
+/** Squat depth: thigh inclination (near leg side-on, both legs averaged otherwise). */
 export function thighAngle(f: PoseFrame, cal: Calibration): number | null {
-  const space = f.angleSpace;
-  const up = upFor(cal, space);
-  return f.bySide((s) => {
-    const j = SIDE[s];
-    return f.segmentAngleFromUp(j.knee, j.hip, up, space);
-  }, ['hip', 'knee']);
+  return f.bySide((s) => thighInclination(f, cal, s), ['hip', 'knee']);
+}
+
+/** Deepest thigh of either leg (lunges: the front thigh; both legs are visible even side-on). */
+export function maxThighInclination(f: PoseFrame, cal: Calibration): number | null {
+  const values = (['left', 'right'] as const)
+    .map((s) => thighInclination(f, cal, s))
+    .filter((v): v is number => v !== null && Number.isFinite(v));
+  return values.length ? Math.max(...values) : null;
+}
+
+const imageDown = (cal: Calibration): Vec3 => scale(cal.up.image, -1);
+
+/** Upper-arm angle away from hanging straight down (0 = elbow pinned at the side). */
+export function upperArmInclination(f: PoseFrame, cal: Calibration, side: BodySide): number | null {
+  const j = SIDE[side];
+  if (f.view === 'side') {
+    if (!f.visible(j.shoulder) || !f.visible(j.elbow)) return null;
+    return f.segmentAngleFromUp(j.shoulder, j.elbow, imageDown(cal), 'image');
+  }
+  const ref = segmentRef(f, cal, side === 'left' ? 'upperArm_left' : 'upperArm_right');
+  return ref === null ? null : projectedAngle(f, j.shoulder, j.elbow, imageDown(cal), ref);
+}
+
+/**
+ * Elbow angle for curls (180 = straight arm). Side-on it's measured directly in the image;
+ * facing the camera the forearm swings toward the lens, so it's derived depth-free from how
+ * far the forearm has risen from hanging (assumes the upper arm stays by the side).
+ */
+export function curlElbowAngle(f: PoseFrame, cal: Calibration, side: BodySide): number | null {
+  const j = SIDE[side];
+  if (!f.sideVisible(side, ['shoulder', 'elbow', 'wrist'])) return null;
+  if (f.view === 'side') return f.elbowAngle(side, 'image');
+  const ref = segmentRef(f, cal, side === 'left' ? 'forearm_left' : 'forearm_right');
+  const elevation = ref === null ? null : projectedAngle(f, j.elbow, j.wrist, imageDown(cal), ref);
+  return elevation === null ? null : 180 - elevation;
 }
 
 /** Shin angle from vertical (forward knee travel). */

@@ -2,8 +2,8 @@ import type { ExerciseDef } from '../core/exercise';
 import { LM } from '../core/landmarks';
 import {
   footPitch,
-  kneeAngle,
   kneeAnkleRatio,
+  legsStraight,
   neckFlexion,
   requiredFullBody,
   shinAngle,
@@ -11,6 +11,7 @@ import {
   torsoChord,
   torsoLean,
 } from './helpers';
+
 
 export const squat: ExerciseDef = {
   id: 'squat',
@@ -25,10 +26,11 @@ export const squat: ExerciseDef = {
     why: 'Side-on I can judge depth, back angle and heels. Facing the camera I can check your knees.',
   },
   required: requiredFullBody,
-  startPosition: (f) => {
-    const k = kneeAngle(f);
-    if (k === null) return 'Stand tall so I can see your legs';
-    return k < 150 ? 'Stand up tall to begin' : null;
+  startPosition: (f, ctx) => {
+    const thigh = thighAngle(f, ctx.cal);
+    const straight = legsStraight(f);
+    if (thigh === null || straight === null) return 'Stand tall so I can see your legs';
+    return thigh > 25 || !straight ? 'Stand up tall to begin' : null;
   },
   calibrate: {
     neck: (f) => (f.view === 'side' ? neckFlexion(f) : null),
@@ -47,9 +49,12 @@ export const squat: ExerciseDef = {
     thigh: (f, ctx) => thighAngle(f, ctx.cal),
   },
   rep: {
-    metric: (f) => kneeAngle(f),
-    start: 170,
-    target: 110,
+    direction: 'down',
+    // Thigh angle from vertical: 0 standing, 90 at parallel. Exact side-on and depth-free
+    // facing the camera (see core/segments.ts), unlike the knee angle.
+    metric: (f, ctx) => thighAngle(f, ctx.cal),
+    start: 3,
+    target: 55,
     startTolerance: 12,
     shallow: {
       id: 'squat_shallow',

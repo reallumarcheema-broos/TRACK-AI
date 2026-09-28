@@ -32,7 +32,7 @@ export function describeSet(r: SetResult): SetStory {
     const parts = [`You held it for ${plural(held, 'second')}, with solid form ${good}% of the time.`];
     if (top) parts.push(`Watch out for ${top.cue.title.toLowerCase()}: ${top.cue.tip}`);
     else parts.push('Your body line stayed straight the whole way. Excellent!');
-    return { verdict: verdictFor(good, true), spoken: parts.join(' '), tips, cleanReps: 0 };
+    return { verdict: verdictFor(good, good >= 98), spoken: parts.join(' '), tips, cleanReps: 0 };
   }
 
   const n = r.reps.length;
@@ -56,18 +56,32 @@ export function describeSet(r: SetResult): SetStory {
   if (r.partialReps.length > 0 && top?.cue.id !== r.partialReps[0].faults[0]?.id) {
     parts.push(`${plural(r.partialReps.length, 'rep')} didn't count.`);
   }
-  if (r.formScore >= 90) parts.push('Excellent work!');
-  else if (r.formScore >= 75) parts.push('Good job. Rest up and go again.');
+  const quality = setQuality(r);
+  if (quality >= 90) parts.push('Excellent work!');
+  else if (quality >= 70) parts.push('Good job. Rest up and go again.');
   else parts.push("Take a breather, then let's go again and focus on that one thing.");
 
-  return { verdict: verdictFor(r.formScore, clean === n), spoken: parts.join(' '), tips, cleanReps: clean };
+  const flawless = clean === n && r.partialReps.length === 0;
+  return { verdict: verdictFor(quality, flawless), spoken: parts.join(' '), tips, cleanReps: clean };
 }
 
-function verdictFor(score: number, flawless: boolean): string {
-  if (flawless && score >= 95) return 'Flawless set!';
-  if (score >= 90) return 'Great set!';
-  if (score >= 75) return 'Solid work';
-  if (score >= 50) return 'Getting there';
+/**
+ * Overall quality 0..100: the form score, pulled down by the share of reps with any fault
+ * and by attempts that didn't count, so "great" means most reps were actually clean.
+ */
+export function setQuality(r: SetResult): number {
+  const n = r.reps.length;
+  if (n === 0) return 0;
+  const cleanRatio = cleanRepCount(r) / n;
+  const countedRatio = n / (n + r.partialReps.length);
+  return Math.round(r.formScore * countedRatio * (0.75 + 0.25 * cleanRatio));
+}
+
+function verdictFor(quality: number, flawless: boolean): string {
+  if (flawless) return 'Flawless set!';
+  if (quality >= 90) return 'Great set!';
+  if (quality >= 70) return 'Solid work';
+  if (quality >= 50) return 'Getting there';
   return "Let's clean that up";
 }
 

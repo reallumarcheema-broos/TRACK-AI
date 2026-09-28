@@ -1,7 +1,7 @@
 import type { ExerciseDef } from '../core/exercise';
 import { LM, SIDE } from '../core/landmarks';
 import { dist } from '../core/vec';
-import { avgPressHeight, pressHeight, requiredUpperBody, torsoLean } from './helpers';
+import { avgPressHeight, pressHeight, requiredUpperBody, straightness, torsoLean } from './helpers';
 
 export const press: ExerciseDef = {
   id: 'press',
@@ -21,11 +21,12 @@ export const press: ExerciseDef = {
     if (h === null) return 'Keep your arms in view';
     let bent = false;
     for (const side of ['left', 'right'] as const) {
-      if (f.sideVisible(side, ['shoulder', 'elbow', 'wrist']) && f.elbowAngle(side, 'world') < 125) bent = true;
+      if (f.sideVisible(side, ['shoulder', 'elbow', 'wrist']) && f.elbowAngle(side, f.spaceFor('frontal')) < 125) bent = true;
     }
     return h > -0.35 && h < 0.65 && bent ? null : 'Bring your hands up to your shoulders to begin';
   },
   calibrate: {
+    lean: (f, cal) => torsoLean(f, cal),
     torso2d: (f) => {
       const s = f.mid(LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, 'image');
       const h = f.mid(LM.LEFT_HIP, LM.RIGHT_HIP, 'image');
@@ -33,10 +34,11 @@ export const press: ExerciseDef = {
     },
   },
   trackers: {
-    // The press moves in the frontal plane, so judge elbows in 3D whatever the view.
-    elbow: (f) => f.bySide((s) => f.elbowAngle(s, 'world'), ['shoulder', 'elbow', 'wrist']),
+    // Lockout: a straight arm looks straight in any projection, so this tolerates 3D depth error.
+    elbow: (f) => f.bySide((s) => straightness(f, SIDE[s].shoulder, SIDE[s].elbow, SIDE[s].wrist), ['shoulder', 'elbow', 'wrist']),
   },
   rep: {
+    direction: 'up',
     metric: (f, ctx) => avgPressHeight(f, ctx.cal),
     start: 0.1,
     target: 0.9,
@@ -73,7 +75,10 @@ export const press: ExerciseDef = {
       joints: [LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP],
       check: (f, ctx) => {
         const lean = torsoLean(f, ctx.cal);
-        return Number.isFinite(lean) ? lean > 14 : null;
+        if (!Number.isFinite(lean)) return null;
+        // Relative to the athlete's own standing posture.
+        const base = Number.isFinite(ctx.cal.base.lean) ? ctx.cal.base.lean : 0;
+        return lean - base > 14;
       },
     },
     {

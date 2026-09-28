@@ -153,6 +153,11 @@ export interface ProjectOptions {
   imageNoise?: number;
   /** World noise std-dev in metres. */
   worldNoise?: number;
+  /**
+   * Systematic per-landmark depth error added to world z (metres). MediaPipe's 3D landmarks
+   * are least reliable in depth; a fixed bias per joint mimics that.
+   */
+  depthBias?: number[];
   rand?: () => number;
 }
 
@@ -224,7 +229,7 @@ export function project(points: Vec3[], opts: ProjectOptions): PoseInput {
     world.push({
       x: w.x + gaussian(rand) * wNoise,
       y: w.y + gaussian(rand) * wNoise,
-      z: w.z + gaussian(rand) * wNoise,
+      z: w.z + gaussian(rand) * wNoise + (opts.depthBias?.[i] ?? 0),
       visibility,
     });
   }

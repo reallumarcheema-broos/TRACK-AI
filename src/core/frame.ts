@@ -58,9 +58,21 @@ export class PoseFrame {
     return mid(this.p(a, space), this.p(b, space));
   }
 
-  /** Space used for joint angles: the image plane is most precise side-on, 3D otherwise. */
+  /**
+   * Best space to measure a movement in a given anatomical plane from the current view.
+   * The image plane is precise for motion parallel to the camera sensor; MediaPipe's 3D
+   * world landmarks can be off by 20°+ in depth, so they are only a fallback.
+   *  - sagittal (squat depth, elbow curl, hinge): image when side-on
+   *  - frontal (arm raises, presses, knee collapse): image when facing the camera
+   */
+  spaceFor(plane: 'sagittal' | 'frontal'): Space {
+    if (plane === 'sagittal') return this.view === 'side' ? 'image' : 'world';
+    return this.view === 'front' ? 'image' : 'world';
+  }
+
+  /** Default space for joint flexion angles (sagittal-plane movements). */
   get angleSpace(): Space {
-    return this.view === 'side' ? 'image' : 'world';
+    return this.spaceFor('sagittal');
   }
 
   angle(a: number, b: number, c: number, space: Space = this.angleSpace): number {
@@ -209,10 +221,13 @@ export class ViewTracker {
   update(f: PoseFrame): void {
     const measured = ViewTracker.measureFrontness(f);
     if (measured !== null) {
-      this.frontness = this.frontness === null ? measured : this.frontness + 0.2 * (measured - this.frontness);
+      const first = this.frontness === null;
+      this.frontness = first ? measured : this.frontness! + 0.2 * (measured - this.frontness!);
       const s = this.frontness;
       // front ≈ |yaw| < 37°, side ≈ |yaw| > 70°, with hysteresis between modes.
-      if (this.view === 'front') {
+      if (first) {
+        this.view = s > 0.76 ? 'front' : s < 0.38 ? 'side' : 'diagonal';
+      } else if (this.view === 'front') {
         if (s < 0.35) this.view = 'side';
         else if (s < 0.72) this.view = 'diagonal';
       } else if (this.view === 'side') {

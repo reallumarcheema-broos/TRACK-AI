@@ -11,7 +11,7 @@ export const pushup: ExerciseDef = {
   horizontal: true,
   camera: {
     recommended: 'side',
-    allowed: ['side', 'diagonal'],
+    allowed: ['side'],
     placement: 'Put your phone on the floor, 2 m to your side, in landscape if you can — head to heels in the frame.',
     why: 'Side-on I can see your body line (hip sag) and how low your chest goes.',
   },
@@ -25,6 +25,7 @@ export const pushup: ExerciseDef = {
     return null;
   },
   rep: {
+    direction: 'down',
     metric: (f) => elbowAngle(f),
     start: 165,
     target: 105,

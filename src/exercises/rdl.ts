@@ -10,7 +10,7 @@ export const rdl: ExerciseDef = {
   kind: 'reps',
   camera: {
     recommended: 'side',
-    allowed: ['side', 'diagonal'],
+    allowed: ['side'],
     placement: 'Place your phone at hip height, 2–3 m to your side, whole body in view.',
     why: 'Side-on is the only way I can see your hip hinge and whether your back stays flat.',
   },
@@ -31,6 +31,7 @@ export const rdl: ExerciseDef = {
     knee: (f) => kneeAngle(f),
   },
   rep: {
+    direction: 'down',
     metric: (f) => hipAngle(f),
     start: 170,
     target: 125,

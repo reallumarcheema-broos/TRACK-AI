@@ -94,6 +94,8 @@ export interface RepSpec {
    * finish together are merged — this supports both simultaneous and alternating curls.
    */
   perSide?: (f: PoseFrame, side: BodySide, ctx: MetricContext) => number | null;
+  /** Which way the athlete travels toward the target (drives the on-screen gauge). */
+  direction: 'down' | 'up';
   /** Nominal metric value at the start position. */
   start: number;
   /** Metric value that counts as a full rep. */

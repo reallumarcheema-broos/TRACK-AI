@@ -22,7 +22,7 @@ export const plank: ExerciseDef = {
   horizontal: true,
   camera: {
     recommended: 'side',
-    allowed: ['side', 'diagonal'],
+    allowed: ['side'],
     placement: 'Put your phone on the floor, 2 m to your side, ideally in landscape — head to heels in the frame.',
     why: 'Side-on I can see if your hips sag or pike.',
   },

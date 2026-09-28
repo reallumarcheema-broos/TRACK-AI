@@ -67,6 +67,19 @@ describe('false positives', () => {
     expect(out.analyzer.partialReps).toHaveLength(0);
   });
 
+  // MediaPipe's 3D landmarks can be off by 10+ cm in depth. Views that fall back to 3D
+  // angles must still count exactly and stay quiet on clean reps.
+  const depthCases = EXERCISES.filter((e) => e.kind === 'reps').flatMap((e) =>
+    [0, 45].map((yaw) => [e.id, yaw] as const).filter(([id, yaw]) => EXERCISE_BY_ID[id].camera.allowed.includes(yaw === 0 ? 'front' : 'diagonal')),
+  );
+  it.each(depthCases)('%s at %i° with 3D depth error — clean reps stay clean', (id, yaw) => {
+    for (const seed of [7, 8]) {
+      const out = runSet({ exercise: id, yaw, reps: 5, seed, noise: 0.003, depthError: 0.06 });
+      expect(out.analyzer.reps).toHaveLength(5);
+      expect(out.repFaults.flat()).toEqual([]);
+    }
+  });
+
   it('clean plank has no faults', () => {
     const out = runSet({ exercise: 'plank', holdSeconds: 20, seed: 9, noise: 0.005 });
     expect(out.analyzer.holdFaults.size).toBe(0);

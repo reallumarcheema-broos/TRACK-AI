@@ -1,6 +1,6 @@
 import type { ExerciseDef } from '../core/exercise';
-import { LM, SIDE } from '../core/landmarks';
-import { requiredUpperBody, torsoLean } from './helpers';
+import { LM } from '../core/landmarks';
+import { curlElbowAngle, requiredUpperBody, torsoLean, upperArmInclination } from './helpers';
 
 export const curl: ExerciseDef = {
   id: 'curl',
@@ -15,21 +15,20 @@ export const curl: ExerciseDef = {
     why: 'Facing me I can watch both arms and check that your elbows stay pinned.',
   },
   required: requiredUpperBody,
-  startPosition: (f) => {
-    let extended = false;
-    for (const side of ['left', 'right'] as const) {
-      if (!f.sideVisible(side, ['shoulder', 'elbow', 'wrist'])) continue;
-      if (f.elbowAngle(side) > 135) extended = true;
-    }
+  calibrate: {
+    lean: (f, cal) => torsoLean(f, cal),
+  },
+  startPosition: (f, ctx) => {
+    const extended = (['left', 'right'] as const).some((side) => (curlElbowAngle(f, ctx.cal, side) ?? 0) > 135);
     return extended ? null : 'Let your arms hang straight to begin';
   },
   rep: {
+    direction: 'up',
     metric: () => null,
-    perSide: (f, side) => {
+    perSide: (f, side, ctx) => {
       // Side-on, the far arm is hidden behind the body; only trust the near one.
       if (f.view === 'side' && side !== f.near) return null;
-      if (!f.sideVisible(side, ['shoulder', 'elbow', 'wrist'])) return null;
-      return f.elbowAngle(side);
+      return curlElbowAngle(f, ctx.cal, side);
     },
     start: 160,
     target: 70,
@@ -78,16 +77,15 @@ export const curl: ExerciseDef = {
       minProgress: 0.35,
       persistMs: 300,
       joints: [LM.LEFT_ELBOW, LM.RIGHT_ELBOW],
-      check: (f) => {
+      check: (f, ctx) => {
         let worst: number | null = null;
         for (const side of ['left', 'right'] as const) {
           if (f.view === 'side' && side !== f.near) continue;
-          const j = SIDE[side];
-          if (!f.allVisible([j.shoulder, j.elbow, j.hip])) continue;
           // Only the arm that is actually curling.
-          if (f.elbowAngle(side) > 130) continue;
-          const a = f.shoulderAngle(side);
-          worst = worst === null ? a : Math.max(worst, a);
+          const elbow = curlElbowAngle(f, ctx.cal, side);
+          if (elbow === null || elbow > 130) continue;
+          const a = upperArmInclination(f, ctx.cal, side);
+          if (a !== null) worst = worst === null ? a : Math.max(worst, a);
         }
         return worst === null ? null : worst > 38;
       },
@@ -103,7 +101,9 @@ export const curl: ExerciseDef = {
       check: (f, ctx) => {
         const lean = torsoLean(f, ctx.cal);
         if (!Number.isFinite(lean)) return null;
-        return lean > (f.angleSpace === 'image' ? 12 : 16);
+        // Change from the athlete's calibrated rest posture (cancels any fixed 3D bias).
+        const base = Number.isFinite(ctx.cal.base.lean) ? ctx.cal.base.lean : 0;
+        return lean - base > (f.angleSpace === 'image' ? 12 : 15);
       },
     },
   ],
