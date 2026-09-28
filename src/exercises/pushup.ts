@@ -104,7 +104,7 @@ export const pushup: ExerciseDef = {
       joints: [LM.NOSE, LM.LEFT_EAR, LM.RIGHT_EAR],
       check: (f) => {
         const d = headDrop(f);
-        return d === null ? null : d > 0.28;
+        return d === null ? null : d > 0.2;
       },
     },
   ],

@@ -101,7 +101,7 @@ export const squat: ExerciseDef = {
         const r = kneeAnkleRatio(f);
         if (r === null) return null;
         const base = ctx.cal.base.kneeRatio;
-        const limit = Number.isFinite(base) ? Math.min(0.8, base - 0.12) : 0.8;
+        const limit = Number.isFinite(base) ? Math.min(0.85, base - 0.1) : 0.82;
         return r < limit;
       },
     },
@@ -121,7 +121,7 @@ export const squat: ExerciseDef = {
         if (neck === null && chord === null) return null;
         const baseNeck = ctx.cal.base.neck;
         const baseChord = ctx.cal.base.chord;
-        const neckBad = neck !== null && neck > 45 && (!Number.isFinite(baseNeck) || neck - baseNeck > 28);
+        const neckBad = neck !== null && neck > 40 && (!Number.isFinite(baseNeck) || neck - baseNeck > 25);
         const chordBad = chord !== null && Number.isFinite(baseChord) && chord / baseChord < 0.8;
         return neckBad || chordBad;
       },
@@ -178,7 +178,7 @@ export const squat: ExerciseDef = {
         const hipW = Math.abs(f.img[LM.LEFT_HIP].x - f.img[LM.RIGHT_HIP].x);
         if (hipW < 1e-4) return null;
         const base = Number.isFinite(ctx.cal.base.hipOffset) ? ctx.cal.base.hipOffset : 0;
-        return Math.abs((hipMid.x - ankleMid.x) / hipW - base) > 0.45;
+        return Math.abs((hipMid.x - ankleMid.x) / hipW - base) > 0.4;
       },
     },
   ],

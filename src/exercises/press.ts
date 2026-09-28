@@ -21,9 +21,9 @@ export const press: ExerciseDef = {
     if (h === null) return 'Keep your arms in view';
     let bent = false;
     for (const side of ['left', 'right'] as const) {
-      if (f.sideVisible(side, ['shoulder', 'elbow', 'wrist']) && f.elbowAngle(side) < 125) bent = true;
+      if (f.sideVisible(side, ['shoulder', 'elbow', 'wrist']) && f.elbowAngle(side, 'world') < 125) bent = true;
     }
-    return h > -0.35 && h < 0.5 && bent ? null : 'Bring your hands up to your shoulders to begin';
+    return h > -0.35 && h < 0.65 && bent ? null : 'Bring your hands up to your shoulders to begin';
   },
   calibrate: {
     torso2d: (f) => {
@@ -33,13 +33,15 @@ export const press: ExerciseDef = {
     },
   },
   trackers: {
-    elbow: (f) => f.bySide((s) => f.elbowAngle(s), ['shoulder', 'elbow', 'wrist']),
+    // The press moves in the frontal plane, so judge elbows in 3D whatever the view.
+    elbow: (f) => f.bySide((s) => f.elbowAngle(s, 'world'), ['shoulder', 'elbow', 'wrist']),
   },
   rep: {
     metric: (f, ctx) => avgPressHeight(f, ctx.cal),
     start: 0.1,
     target: 0.9,
-    startTolerance: 0.3,
+    // Rack height varies a lot (dumbbells at the chin vs. the ears, camera angle).
+    startTolerance: 0.5,
     counter: { partialMin: 0.5 },
     shallow: {
       id: 'press_shallow',
@@ -81,14 +83,15 @@ export const press: ExerciseDef = {
       severity: 'minor',
       tip: 'Drive both arms up at the same speed; your weaker side sets the pace.',
       views: ['front'],
-      minProgress: 0.4,
-      persistMs: 300,
+      minProgress: 0.3,
+      persistMs: 250,
       joints: [LM.LEFT_WRIST, LM.RIGHT_WRIST],
       check: (f, ctx) => {
         const l = pressHeight(f, ctx.cal, 'left');
         const r = pressHeight(f, ctx.cal, 'right');
         if (l === null || r === null) return null;
-        return Math.abs(l - r) > 0.28;
+        // ~11 cm between the wrists for an average torso.
+        return Math.abs(l - r) > 0.22;
       },
     },
   ],

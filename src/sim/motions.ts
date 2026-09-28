@@ -70,9 +70,9 @@ interface Torso {
 function buildTorso(hipMid: Vec3, lean: number, round = 0, neck = 0, lateral = 0): Torso {
   const axis = sagittal(lean + 12 * round, lateral);
   const shMid = add(hipMid, scale(axis, BODY.torso * (1 - 0.12 * round)));
-  const neckDir = sagittal(lean + 12 + neck + 45 * round, lateral);
+  const neckDir = sagittal(lean + 12 + neck + 55 * round, lateral);
   const head = add(shMid, scale(neckDir, BODY.neck));
-  const headForward = sagittal(lean + 12 + neck + 45 * round + 90);
+  const headForward = sagittal(lean + 12 + neck + 55 * round + 90);
   return {
     lShoulder: add(shMid, scale(X, BODY.shoulderHalf)),
     rShoulder: add(shMid, scale(X, -BODY.shoulderHalf)),
@@ -223,8 +223,9 @@ export function rdlPose({ d, faults: f }: PoseParams): CoreJoints {
 export function lungePose({ d, faults: f, side = 'left', step = 1 }: PoseParams): CoreJoints {
   const e = smoothstep(d);
   const lead = side === 'left' ? 1 : -1;
-  const pelvisZ = lerp(0, 0.33, step);
-  const hipY = lerp(0.925, 0.83, step) - 0.33 * d;
+  // Pelvis sits midway between the feet so both legs are nearly straight at the top.
+  const pelvisZ = lerp(0, 0.35, step);
+  const hipY = lerp(0.925, 0.845, step) - 0.35 * d;
   const pelvis = vec(0, hipY, pelvisZ);
   const lHip = add(pelvis, vec(BODY.hipHalf, 0, 0));
   const rHip = add(pelvis, vec(-BODY.hipHalf, 0, 0));
@@ -280,8 +281,9 @@ export function pressPose({ d, faults: f }: PoseParams): CoreJoints {
     const flex = lerp(98, f.softLockout ?? 4, dd);
     return armFK(sh, upper, flex, Y);
   };
-  const lag = 1 - (f.uneven ?? 0) * Math.sin(Math.PI * Math.min(1, d));
-  return assemble(legs, torso, { l: arm(torso.lShoulder, 1, d * lag), r: arm(torso.rShoulder, -1, d) });
+  // Uneven: the left arm consistently trails the right through the press.
+  const dl = Math.pow(Math.max(0, d), 1 + 2 * (f.uneven ?? 0));
+  return assemble(legs, torso, { l: arm(torso.lShoulder, 1, dl), r: arm(torso.rShoulder, -1, d) });
 }
 
 export function jumpingJackPose({ d, faults: f }: PoseParams): CoreJoints {

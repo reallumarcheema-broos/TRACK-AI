@@ -76,15 +76,19 @@ export function shinAngle(f: PoseFrame, cal: Calibration): number | null {
 }
 
 /**
- * How far the head/neck bends forward off the line of the torso, in degrees
- * (angle between hip→shoulder and shoulder→ear). A proxy for upper-back rounding.
+ * How far the head/neck bends forward off the line of the torso, in degrees (signed angle
+ * from hip→shoulder to shoulder→ear; positive = flexion toward the chest, negative = looking
+ * up). Side view only. A proxy for upper-back rounding.
  */
 export function neckFlexion(f: PoseFrame, side: BodySide = f.near): number | null {
   const j = SIDE[side];
   if (!f.visible(j.ear, 0.4) || !f.visible(j.shoulder, 0.4) || !f.visible(j.hip, 0.4)) return null;
   const torso = sub(f.img[j.shoulder], f.img[j.hip]);
   const neck = sub(f.img[j.ear], f.img[j.shoulder]);
-  return angleBetween({ ...torso, z: 0 }, { ...neck, z: 0 });
+  const unsigned = angleBetween({ ...torso, z: 0 }, { ...neck, z: 0 });
+  // In image coordinates (y down) a forward rotation has the sign of the facing direction.
+  const cross = torso.x * neck.y - torso.y * neck.x;
+  return cross * f.facing >= 0 ? unsigned : -unsigned;
 }
 
 /** Shoulder–hip straight-line distance in the image (shrinks when the spine flexes, side-on). */

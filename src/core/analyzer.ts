@@ -157,6 +157,8 @@ export class WorkoutAnalyzer {
   private stable: StableSample[] = [];
   private calibSamples: { metric: number[]; upI: Vec3[]; upW: Vec3[]; base: Record<string, number[]> } | null = null;
   private calibStart = 0;
+  /** When the athlete last entered the start position (setup only). */
+  private inPositionSince: number | null = null;
   private lastSeenT: number | null = null;
   private lostAnnounced = false;
   private lastActivityT = 0;
@@ -197,7 +199,9 @@ export class WorkoutAnalyzer {
     }
     this.lastFrame = frame;
 
-    const trackHint = frame ? this.trackingHint(frame) : "I can't see you yet — step into the frame";
+    const trackHint = frame
+      ? this.trackingHint(frame, this.status !== 'active')
+      : "I can't see you yet — step into the frame";
     if (trackHint) {
       this.handleMissing(t, trackHint, events);
     } else {
@@ -243,11 +247,18 @@ export class WorkoutAnalyzer {
   // ---------------------------------------------------------------------------------------
   // Visibility / tracking
 
-  private trackingHint(f: PoseFrame): string | null {
+  /**
+   * Guidance when the athlete can't be tracked properly, or null when they can. Before the
+   * set starts we insist on every required landmark; mid-set we keep analysing as long as
+   * most of the body is visible (individual metrics cope with the odd hidden joint).
+   */
+  private trackingHint(f: PoseFrame, strict: boolean): string | null {
     const required = this.def.required(f);
     const missing = required.filter((i) => !f.visible(i));
+    if (!strict && missing.length <= required.length * 0.4) return null;
     if (missing.length === 0) {
-      if (f.bodyHeight > 0 && f.bodyHeight < 0.2) return 'Come a little closer to the camera';
+      const size = f.bodyExtent;
+      if (size > 0 && size < 0.28) return 'Come a little closer to the camera';
       return null;
     }
     const lower = new Set<number>([...BODY_REGIONS.feet, LM.LEFT_KNEE, LM.RIGHT_KNEE]);
@@ -284,6 +295,7 @@ export class WorkoutAnalyzer {
     }
     this.stable = [];
     this.calibSamples = null;
+    this.inPositionSince = null;
     this.setStatus('searching', hint, events);
   }
 
@@ -338,6 +350,7 @@ export class WorkoutAnalyzer {
     if (!cam.allowed.includes(f.view)) {
       this.stable = [];
       this.calibSamples = null;
+      this.inPositionSince = null;
       const hint =
         cam.recommended === 'side'
           ? 'Turn sideways to the camera'
@@ -352,9 +365,11 @@ export class WorkoutAnalyzer {
     if (startHint) {
       this.stable = [];
       this.calibSamples = null;
+      this.inPositionSince = null;
       this.setStatus('positioning', startHint, events);
       return;
     }
+    this.inPositionSince ??= t;
 
     const hip = f.mid(LM.LEFT_HIP, LM.RIGHT_HIP, 'image');
     const p = this.setupProgress(f);
@@ -365,11 +380,14 @@ export class WorkoutAnalyzer {
     const xs = this.stable.map((s) => s.x);
     const ys = this.stable.map((s) => s.y);
     const still =
-      Math.max(...ps) - Math.min(...ps) < 0.12 &&
+      Math.max(...ps) - Math.min(...ps) < 0.2 &&
       Math.max(...xs) - Math.min(...xs) < 0.04 &&
       Math.max(...ys) - Math.min(...ys) < 0.04;
+    // Jittery tracking must never trap the athlete in setup: after a few seconds in the start
+    // position we calibrate anyway (medians shrug off the noise).
+    const patient = t - this.inPositionSince >= 3000;
 
-    if (!still) {
+    if (!still && !patient) {
       this.calibSamples = null;
       this.setStatus('positioning', 'Hold still for a second…', events);
       return;
@@ -391,6 +409,7 @@ export class WorkoutAnalyzer {
       this.activeSince = t;
       this.lastActivityT = t;
       this.stable = [];
+      this.inPositionSince = null;
       this.setStatus('active', null, events);
       events.push({ type: 'ready' });
     }
@@ -544,11 +563,16 @@ export class WorkoutAnalyzer {
         const rep = this.finishRep(tr, ev.window, false, false);
         tr.cur = null;
         if (!rep) break;
-        // A per-side partial right next to the other arm's counted rep belongs to that rep.
+        // Per-side: a partial right next to the other arm's rep (counted or not) is the same rep.
+        const near = (r: RepResult | undefined) =>
+          !!r && r.side !== tr.side && Math.abs(r.window.endT - ev.window.endT) < MERGE_WINDOW_MS;
         const last = this.reps[this.reps.length - 1];
-        if (tr.side && last && last.side !== tr.side && Math.abs(last.window.endT - ev.window.endT) < MERGE_WINDOW_MS) {
+        const lastPartial = this.partialReps[this.partialReps.length - 1];
+        if (tr.side && near(last)) {
           this.addFault(last, spec.shallow);
           events.push({ type: 'fault', cue: spec.shallow, repIndex: last.index, midRep: false });
+        } else if (tr.side && near(lastPartial)) {
+          lastPartial.side = undefined;
         } else {
           this.partialReps.push(rep);
           events.push({ type: 'partial', rep });

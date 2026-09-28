@@ -69,7 +69,7 @@ export const plank: ExerciseDef = {
       joints: [LM.NOSE, LM.LEFT_EAR, LM.RIGHT_EAR],
       check: (f) => {
         const d = headDrop(f);
-        return d === null ? null : d > 0.22;
+        return d === null ? null : d > 0.2;
       },
     },
   ],

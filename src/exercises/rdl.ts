@@ -100,7 +100,7 @@ export const rdl: ExerciseDef = {
         if (neck === null && chord === null) return null;
         const baseNeck = ctx.cal.base.neck;
         const baseChord = ctx.cal.base.chord;
-        const neckBad = neck !== null && neck > 45 && (!Number.isFinite(baseNeck) || neck - baseNeck > 28);
+        const neckBad = neck !== null && neck > 40 && (!Number.isFinite(baseNeck) || neck - baseNeck > 25);
         const chordBad = chord !== null && Number.isFinite(baseChord) && chord / baseChord < 0.82;
         return neckBad || chordBad;
       },

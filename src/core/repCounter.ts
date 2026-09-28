@@ -147,26 +147,26 @@ export class RepCounter {
       }
       case 'returning': {
         const a = this.attempt!;
-        if (p >= c.target) {
-          // Dropped back into the bottom (pause / bounce) — same rep.
-          this.phase = 'target';
-          this.trackPeak(a, p, t);
-          break;
-        }
         if (p < a.trough) {
           a.trough = p;
           a.troughT = t;
         }
+        // Came well back up (≥40% of the way from the deepest point) but not all the way?
+        const cameBack = a.trough < c.target && a.trough <= 0.6 * a.peak;
         if (p <= c.exit) {
           this.completeRep(a, t, false, events);
           this.toStart(p, t);
           this.awaitingLockout = p > c.lockout;
-        } else if (a.trough <= c.target - 0.3 && p - a.trough >= c.rebound) {
-          // Came part-way back, then went down again: count it (chained) and begin the next.
+        } else if (cameBack && (p - a.trough >= c.rebound || (p >= c.target && p - a.trough >= 0.1))) {
+          // …then went down again: count it as a chained rep and begin the next one.
           this.completeRep(a, a.troughT, true, events);
           this.beginAttempt(p, t, a.troughT, false);
           events.push({ type: 'repStart', t });
           if (p >= c.target) this.reachTarget(t, events);
+        } else if (p >= c.target) {
+          // Dropped back into the bottom (pause / bounce) — same rep.
+          this.phase = 'target';
+          this.trackPeak(a, p, t);
         }
         break;
       }

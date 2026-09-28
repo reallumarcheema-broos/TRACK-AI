@@ -161,16 +161,21 @@ export class PoseFrame {
     return angleBetween(space === 'image' ? { ...v, z: 0 } : v, up);
   }
 
-  /** Height of the pose's bounding box in normalised image units (0..1). */
-  get bodyHeight(): number {
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (let i = 0; i < this.norm.length; i++) {
+  /** Larger side of the pose's bounding box, in image heights (works standing or lying). */
+  get bodyExtent(): number {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (let i = 0; i < this.img.length; i++) {
       if (this.vis[i] < 0.3) continue;
-      lo = Math.min(lo, this.norm[i].y);
-      hi = Math.max(hi, this.norm[i].y);
+      const p = this.img[i];
+      x0 = Math.min(x0, p.x);
+      x1 = Math.max(x1, p.x);
+      y0 = Math.min(y0, p.y);
+      y1 = Math.max(y1, p.y);
     }
-    return hi > lo ? hi - lo : 0;
+    return x1 > x0 ? Math.max(x1 - x0, y1 - y0) : 0;
   }
 
   /** Length of the shoulder→hip segment in the image (aspect-corrected units). */
@@ -206,15 +211,16 @@ export class ViewTracker {
     if (measured !== null) {
       this.frontness = this.frontness === null ? measured : this.frontness + 0.2 * (measured - this.frontness);
       const s = this.frontness;
+      // front ≈ |yaw| < 37°, side ≈ |yaw| > 70°, with hysteresis between modes.
       if (this.view === 'front') {
-        if (s < 0.3) this.view = 'side';
-        else if (s < 0.52) this.view = 'diagonal';
+        if (s < 0.35) this.view = 'side';
+        else if (s < 0.72) this.view = 'diagonal';
       } else if (this.view === 'side') {
-        if (s > 0.62) this.view = 'front';
-        else if (s > 0.4) this.view = 'diagonal';
+        if (s > 0.8) this.view = 'front';
+        else if (s > 0.42) this.view = 'diagonal';
       } else {
-        if (s > 0.62) this.view = 'front';
-        else if (s < 0.3) this.view = 'side';
+        if (s > 0.8) this.view = 'front';
+        else if (s < 0.35) this.view = 'side';
       }
     }
 
@@ -256,6 +262,11 @@ export class ViewTracker {
 
   /** Signed cue for which way the athlete faces in the raw frame (+ = toward +x). */
   static measureFacing(f: PoseFrame): number | null {
+    // Horizontal body (push-up, plank, deep hinge): "facing" is where the head points.
+    if (f.allVisible([LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP], 0.3)) {
+      const torso = sub(f.mid(LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, 'image'), f.mid(LM.LEFT_HIP, LM.RIGHT_HIP, 'image'));
+      if (Math.abs(torso.x) > Math.abs(torso.y) * 1.2) return Math.sign(torso.x);
+    }
     let score = 0;
     let weight = 0;
     // Feet: toes point forward relative to heels.
@@ -297,10 +308,16 @@ export class ViewTracker {
   }
 }
 
-/** Unit "up" vector from the hips toward the shoulders; used to calibrate for phone tilt. */
+/**
+ * Unit "up" vector of an athlete standing tall; used to calibrate for phone tilt.
+ * Straight legs (ankles → hips) are the most reliably vertical segment; when the feet are
+ * out of frame we fall back to the torso (hips → shoulders).
+ */
 export function bodyUp(f: PoseFrame, space: Space): Vec3 {
   const hip = f.mid(LM.LEFT_HIP, LM.RIGHT_HIP, space);
-  const sh = f.mid(LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, space);
-  const v = sub(sh, hip);
+  const legsVisible = f.allVisible([LM.LEFT_ANKLE, LM.RIGHT_ANKLE, LM.LEFT_HIP, LM.RIGHT_HIP], 0.4);
+  const from = legsVisible ? f.mid(LM.LEFT_ANKLE, LM.RIGHT_ANKLE, space) : hip;
+  const to = legsVisible ? hip : f.mid(LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, space);
+  const v = sub(to, from);
   return normalize(space === 'image' ? { ...v, z: 0 } : v);
 }
