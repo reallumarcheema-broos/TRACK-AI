@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+coverage
+test-results
+playwright-report
+node_modules/.tmp
+# Pose models are downloaded by `npm run fetch-models` (or fetched from the CDN at runtime)
+public/models/*.task
+.DS_Store
