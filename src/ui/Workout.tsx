@@ -243,8 +243,8 @@ export function Workout(props: WorkoutProps) {
     };
 
     const checkEnd = (s: AnalyzerSnapshot, now: number) => {
-      if (coach.targetReached && finishAt === null) finishAt = now + (exercise.kind === 'hold' ? 2200 : 2800);
-      if (finishAt !== null && now >= finishAt) return finish();
+      // Target reached: the coach has said "Done!" — stop counting and show the summary shortly.
+      if (coach.targetReached && finishAt === null) finishAt = now + 1600;
       if (s.status !== 'active') return;
       if (s.phase !== 'start' || s.holding) lastActiveAt = now;
       const didSomething = s.reps > 0 || s.holdMs > 3000;
@@ -255,6 +255,11 @@ export function Workout(props: WorkoutProps) {
     const step = () => {
       if (disposed) return;
       const now = performance.now();
+      if (finishAt !== null) {
+        // Set complete: freeze the analysis so extra movement isn't counted.
+        if (now >= finishAt) return finish();
+        return schedule();
+      }
       let pose: PoseInput | null = null;
       let analyzed = false;
       if (demoFrames) {

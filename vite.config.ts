@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { createReadStream, existsSync } from 'node:fs';
-import { cp, mkdir } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
@@ -45,6 +46,34 @@ function mediapipeWasm(): Plugin {
 }
 
 /**
+ * Writes .gz copies of large text/WASM files next to them; the Node server serves these to
+ * browsers that accept gzip (the 11 MB WASM runtime drops to ~3 MB).
+ */
+function precompress(): Plugin {
+  let outDir = 'dist';
+  const exts = new Set(['.js', '.css', '.wasm', '.html', '.svg', '.json', '.webmanifest']);
+  const walk = async (dir: string): Promise<string[]> => {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(entries.map((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)])));
+    return nested.flat();
+  };
+  return {
+    name: 'track-ai:precompress',
+    apply: 'build',
+    enforce: 'post',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    async closeBundle() {
+      for (const file of await walk(outDir)) {
+        if (!exts.has(path.extname(file)) || (await stat(file)).size < 4096) continue;
+        await writeFile(`${file}.gz`, gzipSync(await readFile(file), { level: 9 }));
+      }
+    },
+  };
+}
+
+/**
  * Production Content-Security-Policy: the page may only talk to itself, Google's model CDN and
  * the optional debrief API. Besides hardening, this stops MediaPipe's built-in usage-metrics
  * logger (odml.pa.googleapis.com) — the app promises that everything stays on the device.
@@ -68,6 +97,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mediapipeWasm(),
     contentSecurityPolicy(loadEnv(mode, root, 'VITE_').VITE_COACH_API_URL),
+    precompress(),
     mode === 'https' ? basicSsl() : null,
   ],
   server: {
@@ -81,7 +111,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: true,
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
     environment: 'node',
   },
 }));
