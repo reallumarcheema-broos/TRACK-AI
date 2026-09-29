@@ -315,7 +315,7 @@ export function Workout(props: WorkoutProps) {
       void wake.enable();
       try {
         if (demo) {
-          demoFrames = simulate({ ...demoScript(exercise.id), absentSeconds: 1.2 });
+          demoFrames = simulate({ ...demoScript(exercise.id, target ?? 0), absentSeconds: 1.2 });
           const cam = defaultCamera(exercise.id);
           canvas.width = cam.width;
           canvas.height = cam.height;
@@ -387,7 +387,6 @@ export function Workout(props: WorkoutProps) {
         </div>
       </div>
 
-      {demo && <div className="demo-tag">Demo athlete</div>}
       {debug && stats && <div className="debug-stats">{stats}</div>}
 
       <div className="hud">
@@ -399,7 +398,7 @@ export function Workout(props: WorkoutProps) {
             <span>{exercise.name}</span>
             {hud.view && (
               <span className="view" style={{ color: recommended ? 'var(--good)' : 'var(--warn)' }}>
-                · {VIEW_NAME[hud.view]}
+                {VIEW_NAME[hud.view]}
               </span>
             )}
           </div>
@@ -409,6 +408,7 @@ export function Workout(props: WorkoutProps) {
         </div>
 
         <div className="hud-middle">
+          {demo && <div className="demo-tag">Demo athlete</div>}
           {hud.go ? (
             <div className="hint ready" role="status">
               GO!
@@ -462,7 +462,7 @@ export function Workout(props: WorkoutProps) {
             </div>
           </div>
 
-          {hud.line && (
+          {hud.line && !showHint && (
             <div className="caption" aria-live="polite">
               <IconCoach /> {hud.line.text}
             </div>

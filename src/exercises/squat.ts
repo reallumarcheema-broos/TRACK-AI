@@ -16,6 +16,7 @@ import {
 export const squat: ExerciseDef = {
   id: 'squat',
   name: 'Squat',
+  repNoun: 'squats',
   tagline: 'Bodyweight, goblet or barbell squats',
   muscles: 'Quads · Glutes · Core',
   kind: 'reps',

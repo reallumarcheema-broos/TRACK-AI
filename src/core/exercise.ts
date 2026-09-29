@@ -125,6 +125,8 @@ export interface HoldSpec {
 export interface ExerciseDef {
   id: ExerciseId;
   name: string;
+  /** Spoken plural for rep counts ("10 squats"); defaults to "reps". */
+  repNoun?: string;
   tagline: string;
   kind: 'reps' | 'hold';
   camera: {

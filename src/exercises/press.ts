@@ -6,6 +6,7 @@ import { avgPressHeight, pressHeight, requiredUpperBody, straightness, torsoLean
 export const press: ExerciseDef = {
   id: 'press',
   name: 'Shoulder Press',
+  repNoun: 'presses',
   tagline: 'Standing dumbbell or barbell overhead press',
   muscles: 'Shoulders · Triceps · Core',
   kind: 'reps',

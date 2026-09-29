@@ -26,6 +26,8 @@ export function History({ onBack }: { onBack: () => void }) {
     }
     return [...map.entries()];
   }, [entries]);
+  // Demo sets are listed but never counted: the stats are about the athlete's own training.
+  const hasRealSets = entries.some((e) => !e.demo);
   const week = entries.filter((e) => !e.demo && Date.now() - e.startedAt < 7 * 86_400_000);
   const weekReps = week.reduce((s, e) => s + (e.kind === 'reps' ? e.reps : 0), 0);
 
@@ -57,23 +59,27 @@ export function History({ onBack }: { onBack: () => void }) {
         <p className="empty">No sets yet. Finish a set and it will show up here.</p>
       ) : (
         <>
-          <section className="stats">
-            <div className="stat">
-              <div className="v">{week.length}</div>
-              <div className="k">Sets this week</div>
-            </div>
-            <div className="stat">
-              <div className="v">{weekReps}</div>
-              <div className="k">Reps this week</div>
-            </div>
-            <div className="stat">
-              <div className="v">
-                {week.length ? Math.round(week.reduce((s, e) => s + e.formScore, 0) / week.length) : 0}
-                <small>%</small>
+          {hasRealSets ? (
+            <section className="stats">
+              <div className="stat">
+                <div className="v">{week.length}</div>
+                <div className="k">Sets this week</div>
               </div>
-              <div className="k">Avg form</div>
-            </div>
-          </section>
+              <div className="stat">
+                <div className="v">{weekReps}</div>
+                <div className="k">Reps this week</div>
+              </div>
+              <div className="stat">
+                <div className="v">
+                  {week.length ? Math.round(week.reduce((s, e) => s + e.formScore, 0) / week.length) : 0}
+                  <small>%</small>
+                </div>
+                <div className="k">Avg form</div>
+              </div>
+            </section>
+          ) : (
+            <p className="muted">Demo sets aren't counted in your stats. Do a set with the camera to start tracking your progress.</p>
+          )}
           {groups.map(([label, list]) => (
             <section key={label} className="stack" style={{ gap: 8 }}>
               <h2 className="group-title">{label}</h2>

@@ -2,8 +2,8 @@
 
 export const PHRASES = {
   ready: ["Got you! Let's go.", "Perfect, I can see you. Let's go!", "You're all set. Go!"],
-  readyWithTarget: (n: number, name: string) => [
-    `Got you! ${n} ${name.toLowerCase()}. Let's go!`,
+  readyWithTarget: (n: number, noun: string) => [
+    `Got you! ${n} ${noun}. Let's go!`,
     `Perfect. ${n} reps — let's go!`,
     `I can see you. ${n} reps, nice and controlled. Go!`,
   ],

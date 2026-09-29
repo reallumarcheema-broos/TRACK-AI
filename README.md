@@ -126,8 +126,9 @@ A few design decisions worth knowing:
 ## Development
 
 ```bash
-npm test                 # 154 unit tests: engine, exercises, coach, server
-npm run test:e2e         # Playwright: demo set end-to-end + real camera pipeline with a fake webcam
+npm test                 # 165 unit tests: engine, exercises, coach, demo, server
+npm run test:e2e         # Playwright: demo set end-to-end, HUD layout on small/landscape phones,
+                         # real camera pipeline with a fake webcam
 npm run typecheck
 ```
 

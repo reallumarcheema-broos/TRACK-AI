@@ -33,6 +33,23 @@ class TimedEngine implements SpeechEngine {
   }
 }
 
+describe('Coach: announcing the set', () => {
+  it('names the target with the exercise’s rep noun', () => {
+    const engine = new TimedEngine();
+    const voice = new VoiceQueue(engine, () => engine.now);
+    const def = EXERCISE_BY_ID.rdl;
+    const analyzer = new WorkoutAnalyzer(def);
+    // rand = 0 picks the first line of each pool.
+    const coach = new Coach(def, { target: 10, voice, rand: () => 0 });
+    for (const fr of simulate({ exercise: 'rdl', reps: 1 })) {
+      engine.advance(fr.t);
+      const { events, snapshot } = analyzer.process(fr.pose, fr.t, fr.aspect);
+      coach.handle(events, snapshot, fr.t);
+    }
+    expect(engine.spoken.map((s) => s.text)).toContain("Got you! 10 deadlifts. Let's go!");
+  });
+});
+
 function coachSet(opts: SimOptions & { exercise: ExerciseId }, target: number | null) {
   const engine = new TimedEngine();
   const voice = new VoiceQueue(engine, () => engine.now);

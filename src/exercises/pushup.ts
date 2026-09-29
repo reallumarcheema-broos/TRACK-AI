@@ -5,6 +5,7 @@ import { bodyInclination, bodyLineSag, elbowAngle, headDrop, requiredFloor } fro
 export const pushup: ExerciseDef = {
   id: 'pushup',
   name: 'Push-up',
+  repNoun: 'push-ups',
   tagline: 'Full or knee push-ups',
   muscles: 'Chest · Triceps · Shoulders · Core',
   kind: 'reps',

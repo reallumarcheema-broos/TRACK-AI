@@ -5,6 +5,7 @@ import { kneeCollapse, legsStraight, maxThighInclination, requiredFullBody, thig
 export const lunge: ExerciseDef = {
   id: 'lunge',
   name: 'Lunge',
+  repNoun: 'lunges',
   tagline: 'Forward, reverse or split-squat lunges',
   muscles: 'Quads · Glutes · Balance',
   kind: 'reps',

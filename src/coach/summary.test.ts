@@ -9,7 +9,7 @@ describe('describeSet', () => {
     const out = runSet({ exercise: 'squat', reps: [{}, { faults: { heelLift: 24 } }, { faults: { heelLift: 24 } }, {}, {}] });
     const story = describeSet(summarizeSet(out.analyzer, { startedAt: 0, endT: 20000, target: 5 }));
     expect(story.spoken).toMatch(/^5 reps, 3 were clean\./);
-    expect(story.spoken).toMatch(/heels lifting on 2 reps/i);
+    expect(story.spoken).toMatch(/main thing to fix: heels lifting — flagged on 2 reps\./i);
     expect(story.tips[0]).toMatch(/heels/i);
     expect(story.cleanReps).toBe(3);
   });

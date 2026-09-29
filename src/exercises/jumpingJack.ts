@@ -7,6 +7,7 @@ const armRaise = (f: Parameters<ExerciseDef['required']>[0]): number | null =>
 export const jumpingJack: ExerciseDef = {
   id: 'jumping_jack',
   name: 'Jumping Jacks',
+  repNoun: 'jumping jacks',
   tagline: 'Full-body cardio warm-up',
   muscles: 'Full body · Cardio',
   kind: 'reps',

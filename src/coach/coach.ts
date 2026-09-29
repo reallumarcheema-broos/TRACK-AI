@@ -93,7 +93,7 @@ export class Coach {
         this.hint = null;
         if (this.def.kind === 'hold') break; // announced on holdStart
         this.say(
-          this.picker.pick(this.target ? PHRASES.readyWithTarget(this.target, this.def.name) : PHRASES.ready),
+          this.picker.pick(this.target ? PHRASES.readyWithTarget(this.target, this.def.repNoun ?? 'reps') : PHRASES.ready),
           'good',
           t,
           { priority: Priority.urgent, interrupt: true, ttlMs: 4000 },

@@ -434,6 +434,9 @@ a {
   .placement {
     grid-template-columns: 1fr;
   }
+  .placement svg {
+    justify-self: center;
+  }
 }
 
 .segmented {
@@ -467,6 +470,13 @@ a {
   background: linear-gradient(180deg, rgba(7, 9, 13, 0), var(--bg) 30%);
   display: grid;
   gap: 10px;
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .sticky-actions {
+    grid-template-columns: 1fr 1fr;
+    padding-top: 8px;
+  }
 }
 
 details.tips summary {
@@ -530,6 +540,7 @@ details.tips ul {
   pointer-events: none;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   padding: calc(10px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));
 }
 
@@ -546,25 +557,45 @@ details.tips ul {
 .hud-title {
   flex: 1;
   min-width: 0;
-  padding: 8px 14px;
-  border-radius: 999px;
+  min-height: 44px;
+  padding: 6px 16px;
+  border-radius: 22px;
   background: rgba(7, 9, 13, 0.62);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   font-weight: 800;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  column-gap: 12px;
+  row-gap: 0;
+  line-height: 1.25;
   white-space: nowrap;
+}
+
+.hud-title > span {
+  max-width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hud-title .view {
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
   color: var(--muted);
   font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Status dot: green when the phone is where it should be, amber otherwise. */
+.hud-title .view::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .hud .icon-btn {
@@ -577,8 +608,9 @@ details.tips ul {
 .hud-middle {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding-top: 12px;
   pointer-events: none;
 }
@@ -617,7 +649,7 @@ details.tips ul {
   top: 50%;
   transform: translateY(-50%);
   width: 18px;
-  height: min(46vh, 340px);
+  height: min(46vh, 340px, calc(100% - 20px));
   border-radius: 999px;
   background: rgba(7, 9, 13, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -748,6 +780,7 @@ details.tips ul {
   font-size: clamp(18px, 5.2vmin, 30px);
   font-weight: 900;
   line-height: 1.1;
+  overflow-wrap: anywhere;
   background: rgba(7, 9, 13, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -833,21 +866,38 @@ details.tips ul {
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
-  .hud {
-    grid-template-rows: auto 1fr auto;
-  }
   .counter .value {
-    font-size: clamp(56px, 30vh, 150px);
+    font-size: clamp(48px, 22vh, 130px);
   }
   .hud-bottom {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'score caption'
+      'dots actions';
     align-items: end;
   }
-  .hud-actions {
-    grid-column: 1 / -1;
+  .scoreboard {
+    grid-area: score;
   }
-  .gauge {
-    height: 50vh;
+  .caption {
+    grid-area: caption;
+  }
+  .rep-dots {
+    grid-area: dots;
+    align-self: center;
+  }
+  .hud-actions {
+    grid-area: actions;
+  }
+}
+
+/* Narrow phones: a slightly smaller counter leaves room for the form banner. */
+@media (max-width: 380px) {
+  .counter {
+    padding: 6px 14px 8px;
+  }
+  .counter .value {
+    font-size: clamp(64px, 21vmin, 180px);
   }
 }
 
@@ -911,10 +961,6 @@ details.tips ul {
 }
 
 .demo-tag {
-  position: absolute;
-  left: 50%;
-  top: calc(64px + var(--safe-t));
-  transform: translateX(-50%);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;

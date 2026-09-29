@@ -50,8 +50,7 @@ export function describeSet(r: SetResult): SetStory {
   else parts.push(`${plural(n, 'rep')}${ofTarget}, ${clean === 0 ? 'none' : clean} ${clean === 1 ? 'was' : 'were'} clean.`);
 
   if (top && top.count > 0) {
-    const where = top.count === 1 ? 'once' : `on ${plural(top.count, 'rep')}`;
-    parts.push(`Main thing to work on: ${top.cue.title.toLowerCase()} ${where}. ${top.cue.tip}`);
+    parts.push(`Main thing to fix: ${top.cue.title.toLowerCase()} — flagged on ${plural(top.count, 'rep')}. ${top.cue.tip}`);
   }
   if (r.partialReps.length > 0 && top?.cue.id !== r.partialReps[0].faults[0]?.id) {
     parts.push(`${plural(r.partialReps.length, 'rep')} didn't count.`);

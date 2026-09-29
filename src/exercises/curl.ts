@@ -5,6 +5,7 @@ import { curlElbowAngle, requiredUpperBody, torsoLean, upperArmInclination } fro
 export const curl: ExerciseDef = {
   id: 'curl',
   name: 'Bicep Curl',
+  repNoun: 'curls',
   tagline: 'Dumbbell curls — together or alternating',
   muscles: 'Biceps · Forearms',
   kind: 'reps',

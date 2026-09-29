@@ -5,6 +5,7 @@ import { hipAngle, hipTravel, kneeAngle, neckFlexion, requiredFullBody, torsoCho
 export const rdl: ExerciseDef = {
   id: 'rdl',
   name: 'Romanian Deadlift',
+  repNoun: 'deadlifts',
   tagline: 'Hip hinge with dumbbells, kettlebell or bar',
   muscles: 'Hamstrings · Glutes · Back',
   kind: 'reps',

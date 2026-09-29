@@ -180,35 +180,50 @@ export function simulate(opts: SimOptions): SimFrame[] {
   return frames;
 }
 
-/** Scripted sets for the camera-free demo: a few clean reps and a few typical mistakes. */
-export function demoScript(exercise: ExerciseId): SimOptions {
-  switch (exercise) {
-    case 'squat':
-      return {
-        exercise,
-        yaw: 90,
-        reps: [{}, {}, { depth: 0.42 }, {}, { faults: { lean: 30 } }, {}, { faults: { heelLift: 24 } }, {}, { depth: 0.68 }, {}, {}],
-      };
-    case 'pushup':
-      return { exercise, reps: [{}, {}, { faults: { sag: 0.1 } }, {}, { depth: 0.45 }, {}, { fast: true }, {}, {}] };
-    case 'lunge':
-      return { exercise, reps: [{}, {}, { faults: { lean: 38 } }, {}, { depth: 0.25 }, {}, {}, {}] };
-    case 'rdl':
-      return { exercise, reps: [{}, {}, { faults: { round: 1 } }, {}, { faults: { kneesBent: 1 } }, {}, {}, {}] };
-    case 'curl':
-      return { exercise, reps: [{}, {}, { faults: { swing: 22 } }, {}, { depth: 0.55 }, {}, { faults: { elbowDrift: 55 } }, {}, {}, {}] };
-    case 'press':
-      return { exercise, reps: [{}, {}, { depth: 0.4 }, {}, { faults: { uneven: 1 } }, {}, { faults: { softLockout: 45 } }, {}, {}] };
-    case 'jumping_jack':
-      return { exercise, reps: [{}, {}, {}, { depth: 0.6 }, {}, {}, { faults: { narrowFeet: 1 } }, {}, {}, {}, {}, {}] };
-    case 'plank':
-      return {
-        exercise,
-        holdSeconds: 32,
-        holdFaults: [
-          { from: 9, to: 14, faults: { sag: 0.1 } },
-          { from: 20, to: 24, faults: { sag: -0.13 } },
-        ],
-      };
+/** A demo attempt; `counts: false` marks an aborted partial rep that the analyzer won't count. */
+type DemoRep = RepScript & { counts?: false };
+const partial = (depth: number): DemoRep => ({ depth, counts: false });
+
+/** Demo attempts: clean reps mixed with the typical mistakes for each exercise. */
+const DEMO_REPS: Record<Exclude<ExerciseId, 'plank'>, DemoRep[]> = {
+  squat: [{}, {}, partial(0.42), {}, { faults: { lean: 30 } }, {}, { faults: { heelLift: 24 } }, {}, { depth: 0.68 }, {}, {}],
+  pushup: [{}, {}, { faults: { sag: 0.1 } }, {}, partial(0.45), {}, { fast: true }, {}, {}],
+  lunge: [{}, {}, { faults: { lean: 38 } }, {}, partial(0.25), {}, {}, {}],
+  rdl: [{}, {}, { faults: { round: 1 } }, {}, { faults: { kneesBent: 1 } }, {}, {}, {}],
+  curl: [{}, {}, { faults: { swing: 22 } }, {}, partial(0.55), {}, { faults: { elbowDrift: 55 } }, {}, {}, {}],
+  press: [{}, {}, partial(0.4), {}, { faults: { uneven: 1 } }, {}, { faults: { softLockout: 45 } }, {}, {}],
+  jumping_jack: [{}, {}, {}, partial(0.6), {}, {}, { faults: { narrowFeet: 1 } }, {}, {}, {}, {}, {}],
+};
+
+/**
+ * Trims or pads the demo attempts so the set reaches `target` counted reps (0 = open set),
+ * plus one spare rep in case the analyzer rejects a scripted one.
+ */
+function fitToTarget(attempts: DemoRep[], target: number): RepScript[] {
+  if (target <= 0) return attempts;
+  const reps: RepScript[] = [];
+  let counted = 0;
+  for (const rep of attempts) {
+    if (counted >= target) break;
+    reps.push(rep);
+    if (rep.counts !== false) counted++;
   }
+  for (; counted < target; counted++) reps.push({});
+  reps.push({});
+  return reps;
+}
+
+/** Scripted set for the camera-free demo, long enough to reach the chosen target. */
+export function demoScript(exercise: ExerciseId, target = 0): SimOptions {
+  if (exercise === 'plank') {
+    return {
+      exercise,
+      holdSeconds: Math.max(32, target + 2),
+      holdFaults: [
+        { from: 9, to: 14, faults: { sag: 0.1 } },
+        { from: 20, to: 24, faults: { sag: -0.13 } },
+      ],
+    };
+  }
+  return { exercise, reps: fitToTarget(DEMO_REPS[exercise], target) };
 }
