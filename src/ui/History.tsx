@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { clearHistory, loadHistory, type HistoryEntry } from '../state/history';
-import { ExerciseFigure } from './ExerciseFigure';
+import { ExerciseArt } from './ExerciseArt';
 import { IconBack, IconTrash } from './icons';
 import { formatDuration } from './Summary';
 
@@ -86,7 +86,7 @@ export function History({ onBack }: { onBack: () => void }) {
               <div className="list">
                 {list.map((e) => (
                   <article key={e.id} className="list-item">
-                    <ExerciseFigure id={e.exerciseId} className="figure" />
+                    <ExerciseArt id={e.exerciseId} />
                     <div>
                       <div className="title">
                         {e.exerciseName} {e.demo && <span className="badge">demo</span>}

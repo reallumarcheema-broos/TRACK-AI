@@ -30,6 +30,11 @@ const MIME: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
   '.ico': 'image/x-icon',
   '.wasm': 'application/wasm',
   '.task': 'application/octet-stream',
@@ -44,6 +49,24 @@ const SECURITY_HEADERS: Record<string, string> = {
   // The app needs the camera and nothing else.
   'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
 };
+
+/** Parses a single `bytes=` range (the only kind browsers send for media). */
+export function parseRange(header: string | undefined, size: number): { start: number; end: number } | 'invalid' | null {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? '');
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  let start: number;
+  let end: number;
+  if (m[1] === '') {
+    // Suffix range: the last N bytes.
+    start = Math.max(0, size - Number(m[2]));
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+  }
+  if (start > end || start >= size) return 'invalid';
+  return { start, end };
+}
 
 function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
   const json = JSON.stringify(body);
@@ -177,10 +200,24 @@ export function createApp(opts: AppOptions) {
       headers.Vary = 'Accept-Encoding';
       file = `${file}.gz`;
     }
-    headers['Content-Length'] = String(statSync(file).size);
-    res.writeHead(200, headers);
+    const size = statSync(file).size;
+    // Byte ranges: Safari won't play a video without them, and seeking/looping needs them.
+    const range = headers['Content-Encoding'] ? null : parseRange(req.headers.range, size);
+    if (range === 'invalid') {
+      res.writeHead(416, { ...SECURITY_HEADERS, 'Content-Range': `bytes */${size}` });
+      return void res.end();
+    }
+    headers['Accept-Ranges'] = 'bytes';
+    if (range) {
+      headers['Content-Range'] = `bytes ${range.start}-${range.end}/${size}`;
+      headers['Content-Length'] = String(range.end - range.start + 1);
+      res.writeHead(206, headers);
+    } else {
+      headers['Content-Length'] = String(size);
+      res.writeHead(200, headers);
+    }
     if (req.method === 'HEAD') return void res.end();
-    createReadStream(file).pipe(res);
+    createReadStream(file, range ?? {}).pipe(res);
   }
 
   return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {

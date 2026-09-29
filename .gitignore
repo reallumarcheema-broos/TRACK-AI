@@ -13,3 +13,5 @@ node_modules/.tmp
 public/models/*.task
 .DS_Store
 .probe/
+# Raw downloads from `npm run people` (the web-ready copies live in src/assets)
+scripts/.people-cache/

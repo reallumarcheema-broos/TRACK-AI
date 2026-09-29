@@ -4,7 +4,7 @@ import { fetchDebrief } from '../coach/debrief';
 import { describeSet, toDebriefRequest } from '../coach/summary';
 import { Priority, type VoiceQueue } from '../coach/voice';
 import { previousSets, updateHistory } from '../state/history';
-import { ExerciseFigure } from './ExerciseFigure';
+import { ExerciseArt } from './ExerciseArt';
 import { IconCoach, IconHistory, IconRepeat, IconSound } from './icons';
 
 export interface SummaryProps {
@@ -64,7 +64,7 @@ export function Summary({ result, entryId, aiDebrief, voice, onAgain, onHome, on
   return (
     <main className="page">
       <section className="verdict">
-        <ExerciseFigure id={result.exerciseId} className="figure" />
+        <ExerciseArt id={result.exerciseId} />
         <span className="eyebrow">{result.exerciseName} · set complete</span>
         <h1>{story.verdict}</h1>
       </section>

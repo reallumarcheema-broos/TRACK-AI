@@ -30,7 +30,7 @@ test.describe('small phone', () => {
   test.use({ viewport: { width: 360, height: 740 } });
 
   test('a long exercise name and a form alert fit on screen', async ({ page }) => {
-    await page.goto('/?demo=rdl');
+    await page.goto('/?demo=rdl&sim');
     await expect(page.locator('.fault.bad, .fault.warn')).toBeVisible({ timeout: 45_000 });
     expect(await hudProblems(page)).toEqual([]);
   });
@@ -40,13 +40,13 @@ test.describe('landscape phone', () => {
   test.use({ viewport: { width: 844, height: 390 } });
 
   test('the push-up HUD leaves room for the depth gauge', async ({ page }) => {
-    await page.goto('/?demo=pushup');
+    await page.goto('/?demo=pushup&sim');
     await expect(page.locator('.fault.bad, .fault.warn')).toBeVisible({ timeout: 45_000 });
     expect(await hudProblems(page)).toEqual([]);
   });
 
   test('setup actions sit side by side instead of covering the page', async ({ page }) => {
-    await page.goto('/?exercise=squat');
+    await page.goto('/?exercise=squat&sim');
     const start = await page.getByRole('button', { name: /Start set/ }).boundingBox();
     const demo = await page.getByRole('button', { name: /Watch a demo/ }).boundingBox();
     expect(start).not.toBeNull();

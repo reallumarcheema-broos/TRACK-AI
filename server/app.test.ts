@@ -125,6 +125,25 @@ describe('static hosting', () => {
     expect((await res.arrayBuffer()).byteLength).toBe(10_000); // fetch transparently decompresses
   });
 
+  it('serves byte ranges so videos can play, seek and loop', async () => {
+    const dir = dist();
+    const video = Buffer.from(Array.from({ length: 1000 }, (_, i) => i % 256));
+    writeFileSync(path.join(dir, 'assets/demo-abc.mp4'), video);
+    const base = await start({ distDir: dir });
+    const full = await fetch(`${base}/assets/demo-abc.mp4`);
+    expect(full.status).toBe(200);
+    expect(full.headers.get('content-type')).toBe('video/mp4');
+    expect(full.headers.get('accept-ranges')).toBe('bytes');
+    const part = await fetch(`${base}/assets/demo-abc.mp4`, { headers: { Range: 'bytes=100-199' } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get('content-range')).toBe('bytes 100-199/1000');
+    expect(Buffer.from(await part.arrayBuffer())).toEqual(video.subarray(100, 200));
+    const tail = await fetch(`${base}/assets/demo-abc.mp4`, { headers: { Range: 'bytes=-10' } });
+    expect(Buffer.from(await tail.arrayBuffer())).toEqual(video.subarray(990));
+    const bad = await fetch(`${base}/assets/demo-abc.mp4`, { headers: { Range: 'bytes=5000-' } });
+    expect(bad.status).toBe(416);
+  });
+
   it('never serves files outside the build directory', async () => {
     const dir = dist();
     writeFileSync(path.join(dir, '..', `secret-${path.basename(dir)}.txt`), 'TOP SECRET');

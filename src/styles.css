@@ -365,10 +365,40 @@ a {
   transform: scale(0.98);
 }
 
-.ex-card .figure {
-  width: 64px;
-  height: 64px;
+/* Exercise picture: a photo of an AI-generated person, or a monogram until one exists. */
+.exercise-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: radial-gradient(120% 120% at 25% 15%, #1d2b3b, var(--surface) 70%);
+  color: var(--good);
+}
+
+.exercise-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.exercise-art .mono {
+  font-family: var(--num);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.ex-card .exercise-art {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
   margin-bottom: 4px;
+}
+
+.ex-card .exercise-art .mono {
+  font-size: 34px;
 }
 
 .ex-card h3 {
@@ -403,14 +433,14 @@ a {
   align-items: center;
 }
 
-.setup-head .figure {
+.setup-head .exercise-art {
   width: 84px;
   height: 84px;
-  flex: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 8px;
+}
+
+.setup-head .exercise-art .mono {
+  font-size: 30px;
 }
 
 .setup-head h1 {
@@ -981,10 +1011,15 @@ details.tips ul {
   padding-top: 8px;
 }
 
-.verdict .figure {
-  width: 76px;
-  height: 76px;
+.verdict .exercise-art {
+  width: 84px;
+  height: 84px;
   margin: 0 auto;
+  border-radius: 22px;
+}
+
+.verdict .exercise-art .mono {
+  font-size: 30px;
 }
 
 .verdict h1 {
@@ -1167,9 +1202,14 @@ details.tips ul {
   border: 1px solid var(--border);
 }
 
-.list-item .figure {
+.list-item .exercise-art {
   width: 44px;
   height: 44px;
+  border-radius: 12px;
+}
+
+.list-item .exercise-art .mono {
+  font-size: 16px;
 }
 
 .list-item .title {

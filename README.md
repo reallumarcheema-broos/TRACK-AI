@@ -8,7 +8,6 @@ breakdown.
 
 <p align="center">
   <img src="docs/screenshots/home.png" width="260" alt="Exercise picker">
-  <img src="docs/screenshots/workout-fault.png" width="260" alt="Live set: rep counter, depth gauge and a 'Chest dropping' form alert">
   <img src="docs/screenshots/summary.png" width="260" alt="Set summary with coach debrief and rep timeline">
 </p>
 
@@ -23,7 +22,10 @@ breakdown.
 - **AI debrief with Claude** (optional): after the set, the server turns your numbers into two or three
   spoken sentences of coaching. Without an API key the app uses its on-device summary.
 - **Installable PWA**, works offline once loaded, keeps the screen awake during a set, history of your
-  sets, a camera-free **demo athlete** to try everything without moving.
+  sets.
+- **AI people, not stick figures**: exercise photos and camera-free demo videos of photorealistic
+  **AI-generated people who don't exist**. The demo runs the real tracking on the video, exactly like
+  a camera feed, and the app labels them as AI-generated ([how to create them](#ai-people)).
 
 ## Exercises and what the coach checks
 
@@ -48,8 +50,9 @@ npm run fetch-models     # optional: bundle the pose models for offline use (els
 npm run dev              # http://localhost:5173 — works with a laptop webcam
 ```
 
-Open the app, pick an exercise, and either **Start set** (camera) or **Watch a demo** (no camera).
-You can also jump straight to a demo with `http://localhost:5173/?demo=squat`.
+Open the app, pick an exercise and **Start set**. Once [AI demo videos](#ai-people) are added, a
+**Watch a demo** button (no camera needed) appears too; `http://localhost:5173/?demo=squat` jumps
+straight to one.
 
 The dev server proxies `/api` to `localhost:8787`; to try AI debriefs while developing, run
 `ANTHROPIC_API_KEY=sk-ant-... npm run dev:server` in a second terminal.
@@ -64,6 +67,28 @@ npm run dev:https        # self-signed HTTPS on your LAN, e.g. https://192.168.1
 
 Accept the certificate warning on the phone, prop it up 2–3 m away, turn the volume up and go. For
 day-to-day use, deploy it (below) and **Add to Home Screen** — it runs full-screen like a native app.
+
+## AI people
+
+The exercise photos and the camera-free demo show photorealistic **AI-generated people who don't
+exist**, not stick figures. They're made with Google's Imagen (photos) and Veo (short clips) through the
+Gemini API:
+
+```bash
+npm run people                                       # shows the plan and estimated cost; spends nothing
+GEMINI_API_KEY=... npm run people -- --yes           # 8 photos + 8 demo videos (about $10)
+GEMINI_API_KEY=... npm run people -- --yes --photos  # photos only (a few cents each)
+```
+
+You need a Gemini API key from Google AI Studio (Veo needs billing enabled) and ffmpeg. The script
+writes web-ready files to `src/assets/people` and `src/assets/demo`, plus `src/assets/ai-people.json`
+with the model and prompt behind each file. Demo videos play forwards then backwards so they loop
+without a jump the tracker would notice, and come as H.264 and VP9 so every browser can play one.
+Made them with another tool? `npm run people -- --import squat clip.mp4`.
+
+The demo runs the video through the same MediaPipe tracking as the camera, so it shows exactly what the
+coach does with you, and the app labels the people as AI-generated. Until the files exist, the cards
+show a plain tile and the demo button is hidden.
 
 ## Production: app + AI debrief server
 
@@ -126,7 +151,7 @@ A few design decisions worth knowing:
 ## Development
 
 ```bash
-npm test                 # 165 unit tests: engine, exercises, coach, demo, server
+npm test                 # 169 unit tests: engine, exercises, coach, demo, media, server
 npm run test:e2e         # Playwright: demo set end-to-end, HUD layout on small/landscape phones,
                          # real camera pipeline with a fake webcam
 npm run typecheck
@@ -136,7 +161,8 @@ npm run typecheck
   with scriptable faults (knee valgus, rounding, sagging…), and projects it through a pinhole camera into
   MediaPipe's landmark format, with noise and 3D depth error. The tests run whole sets through the
   analyzer across views and seeds, and assert exact rep counts, the right faults on the right reps and
-  **no false alarms on clean sets**. The same athlete powers the in-app demo.
+  **no false alarms on clean sets**. End-to-end tests use it in place of the demo video (`?sim`); it
+  never appears in the app itself.
 - **`?debug`** on the workout screen shows live FPS, detection time, delegate, view, rep phase and
   progress — the quickest way to tune thresholds on a real phone.
 - Each exercise is a declarative definition in [`src/exercises`](src/exercises): a rep metric with
@@ -149,9 +175,11 @@ src/
   exercises/  exercise definitions (metrics, rules, cues)
   coach/      voice queue, coach logic, phrases, sound effects, summaries, debrief client
   pose/       MediaPipe detector, camera, skeleton drawing, wake lock
-  sim/        synthetic athlete for tests and the demo
+  sim/        synthetic athlete for the tests
+  media/      AI people: photos and demo videos bundled from src/assets
   ui/         React screens
 server/       Node server: static hosting + /api/debrief (Claude)
+scripts/      pose model download, AI people generator
 e2e/          Playwright tests
 ```
 

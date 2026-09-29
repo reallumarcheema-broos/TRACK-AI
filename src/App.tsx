@@ -4,6 +4,7 @@ import type { ExerciseId } from './core/exercise';
 import { WebAudioSfx } from './coach/sfx';
 import { NullEngine, Priority, VoiceQueue, WebSpeechEngine } from './coach/voice';
 import { EXERCISE_BY_ID } from './exercises';
+import { hasDemo } from './media/people';
 import { addHistory, entryFromResult } from './state/history';
 import { useSettings } from './state/settings';
 import { History } from './ui/History';
@@ -25,7 +26,10 @@ function initialRoutes(): Route[] {
   const params = new URLSearchParams(location.search);
   const demo = params.get('demo') as ExerciseId | null;
   const ex = params.get('exercise') as ExerciseId | null;
-  if (demo && demo in EXERCISE_BY_ID) return [{ name: 'home' }, { name: 'setup', id: demo }, { name: 'workout', id: demo, demo: true, key: 0 }];
+  if (demo && demo in EXERCISE_BY_ID) {
+    const setup: Route[] = [{ name: 'home' }, { name: 'setup', id: demo }];
+    return hasDemo(demo) ? [...setup, { name: 'workout', id: demo, demo: true, key: 0 }] : setup;
+  }
   if (ex && ex in EXERCISE_BY_ID) return [{ name: 'home' }, { name: 'setup', id: ex }];
   return [{ name: 'home' }];
 }
@@ -119,7 +123,7 @@ export function App() {
           sfx={services.sfx}
           onToggleVoice={() => updateSettings({ voice: !settings.voice })}
           onExit={back}
-          onDemoInstead={() => replace({ name: 'workout', id: route.id, demo: true, key: Date.now() })}
+          onDemoInstead={hasDemo(route.id) ? () => replace({ name: 'workout', id: route.id, demo: true, key: Date.now() }) : undefined}
           onFinish={(result, demo) => {
             const entry = entryFromResult(result, demo);
             const didSomething = result.reps.length > 0 || result.partialReps.length > 0 || result.holdMs > 3000;

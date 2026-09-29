@@ -1,5 +1,5 @@
 /* TRACK AI Coach service worker: offline app shell + cached AI runtime/model. */
-const VERSION = 'track-ai-v1';
+const VERSION = 'track-ai-v2';
 const SHELL = `${VERSION}-shell`;
 const HEAVY = `${VERSION}-ai`; // WASM runtime + pose models (large, rarely change)
 
@@ -46,6 +46,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.pathname.startsWith('/api/')) return; // never cache the AI debrief
+  // Videos stream with byte ranges; the Cache API can't store partial responses.
+  if (request.headers.has('range') || /\.(mp4|webm)$/.test(url.pathname)) return;
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));
   } else if (isHeavy(url)) {

@@ -8,8 +8,9 @@ test('home lists every exercise', async ({ page }) => {
   }
 });
 
+// `?sim` swaps the demo video for the synthetic test athlete, so these runs are deterministic.
 test('a demo set is tracked, coached and summarised', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?sim');
   await page.getByRole('button', { name: /Jumping Jacks/ }).click();
   await page.getByRole('button', { name: '10', exact: true }).click();
   await page.getByRole('button', { name: /Watch a demo/ }).click();

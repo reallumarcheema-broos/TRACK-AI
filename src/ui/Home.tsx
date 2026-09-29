@@ -1,6 +1,7 @@
 import type { ExerciseId } from '../core/exercise';
 import { EXERCISES } from '../exercises';
-import { ExerciseFigure } from './ExerciseFigure';
+import { hasAiPeople } from '../media/people';
+import { ExerciseArt } from './ExerciseArt';
 import { IconHistory, IconLock, IconSettings, Logo } from './icons';
 
 const VIEW_LABEL = { side: 'Side-on', front: 'Facing camera', diagonal: 'Angled' } as const;
@@ -60,7 +61,7 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
         <div className="ex-grid">
           {EXERCISES.map((ex) => (
             <button key={ex.id} className="ex-card" onClick={() => props.onPick(ex.id)}>
-              <ExerciseFigure id={ex.id} className="figure" />
+              <ExerciseArt id={ex.id} />
               <h3>{ex.name}</h3>
               <span className="muscles">{ex.muscles}</span>
               <span className="badge">{VIEW_LABEL[ex.camera.recommended]}</span>
@@ -73,6 +74,7 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
         <IconLock />
         Private by design: your camera feed is analysed on this device and never uploaded.
       </p>
+      {hasAiPeople && <p className="note">The people in the pictures and demos are AI-generated. They don't exist.</p>}
     </main>
   );
 }

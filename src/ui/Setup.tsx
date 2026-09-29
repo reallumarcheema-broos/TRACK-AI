@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { ExerciseDef } from '../core/exercise';
 import type { FacingMode } from '../pose/camera';
-import { ExerciseFigure } from './ExerciseFigure';
+import { hasDemo } from '../media/people';
+import { ExerciseArt } from './ExerciseArt';
 import { IconBack, IconCamera, IconPlay } from './icons';
 import { PlacementDiagram } from './PlacementDiagram';
 
@@ -32,7 +33,7 @@ export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStar
       </header>
 
       <section className="setup-head">
-        <ExerciseFigure id={exercise.id} className="figure" />
+        <ExerciseArt id={exercise.id} />
         <div className="stack" style={{ gap: 4 }}>
           <h1>{exercise.name}</h1>
           <p className="muted">{exercise.tagline}</p>
@@ -91,9 +92,11 @@ export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStar
         <button className="btn primary big" onClick={() => start(false)} disabled={starting}>
           <IconPlay /> Start {hold ? 'hold' : 'set'}
         </button>
-        <button className="btn ghost" onClick={() => start(true)} disabled={starting}>
-          Watch a demo (no camera)
-        </button>
+        {hasDemo(exercise.id) && (
+          <button className="btn ghost" onClick={() => start(true)} disabled={starting}>
+            Watch a demo (no camera)
+          </button>
+        )}
       </div>
     </main>
   );

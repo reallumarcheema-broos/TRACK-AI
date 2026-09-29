@@ -10,6 +10,7 @@ import { CameraError, startCamera, stopCamera } from '../pose/camera';
 import { defaultQuality, getDetector, type LoadProgress, type PoseDetector } from '../pose/detector';
 import { drawDemoBackdrop, drawSkeleton } from '../pose/draw';
 import { ScreenWakeLock } from '../pose/wakeLock';
+import { demoVideo, SIM_DEMO } from '../media/people';
 import { defaultCamera, demoScript, simulate, type SimFrame } from '../sim/simulator';
 import type { Settings } from '../state/settings';
 import { IconAlert, IconCheck, IconClose, IconCoach, IconMute, IconSound } from './icons';
@@ -25,7 +26,8 @@ export interface WorkoutProps {
   onToggleVoice: () => void;
   onFinish: (result: SetResult, demo: boolean) => void;
   onExit: () => void;
-  onDemoInstead: () => void;
+  /** Offered when the camera can't start; absent when this exercise has no demo. */
+  onDemoInstead?: () => void;
 }
 
 interface Hud {
@@ -94,18 +96,37 @@ function loadMessage(p: LoadProgress): { message: string; fraction: number | nul
   return { message: 'Loading the AI engine…', fraction: null };
 }
 
+class DemoVideoError extends Error {}
+
+/** Plays a demo video on repeat (muted, so browsers allow autoplay) as the tracking source. */
+async function playLoop(video: HTMLVideoElement, url: string): Promise<void> {
+  video.srcObject = null;
+  video.src = url;
+  video.loop = true;
+  video.muted = true;
+  try {
+    await video.play();
+  } catch (err) {
+    throw new DemoVideoError(`The demo video couldn't play (${(err as Error)?.message ?? 'unknown error'}).`);
+  }
+}
+
 const toneOf = (faults: { severity: Severity }[]): Tone =>
   faults.length === 0 ? 'good' : faults.some((f) => f.severity === 'major') ? 'bad' : 'warn';
 
 export function Workout(props: WorkoutProps) {
   const { exercise, target, demo, settings, voice, sfx } = props;
+  // The demo plays a video of an AI-generated person through the real pose tracking;
+  // `?sim` swaps in the synthetic test athlete instead.
+  const simDemo = demo && SIM_DEMO;
+  const videoDemo = demo && !simDemo ? demoVideo(exercise.id) : undefined;
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const finishRef = useRef<() => void>(() => {});
   const [aspect, setAspect] = useState(() => {
     const cam = defaultCamera(exercise.id);
-    return demo ? cam.width / cam.height : 9 / 16;
+    return simDemo ? cam.width / cam.height : 9 / 16;
   });
   const stage = useStageSize(wrapRef, aspect);
   const [load, setLoad] = useState<Load>({ state: 'loading', message: demo ? 'Preparing the demo…' : 'Starting the camera…', fraction: null });
@@ -166,6 +187,11 @@ export function Workout(props: WorkoutProps) {
       stopLoop();
       stopCamera(stream, video);
       stream = null;
+      if (videoDemo) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
       void wake.disable();
     };
 
@@ -188,7 +214,7 @@ export function Workout(props: WorkoutProps) {
       if (canvas.width === 0) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (demoFrames) drawDemoBackdrop(ctx, s.frame);
-      if (s.frame && (settings.showSkeleton || demoFrames)) {
+      if (s.frame && (settings.showSkeleton || demo)) {
         drawSkeleton(ctx, s.frame, { faultJoints: new Set(s.faultJoints), avatar: !!demoFrames, pulse: (now % 800) / 800 });
       }
     };
@@ -314,7 +340,8 @@ export function Workout(props: WorkoutProps) {
     (async () => {
       void wake.enable();
       try {
-        if (demo) {
+        if (demo && !simDemo && !videoDemo) throw new Error('There is no demo video for this exercise yet');
+        if (simDemo) {
           demoFrames = simulate({ ...demoScript(exercise.id, target ?? 0), absentSeconds: 1.2 });
           const cam = defaultCamera(exercise.id);
           canvas.width = cam.width;
@@ -324,16 +351,17 @@ export function Workout(props: WorkoutProps) {
           demoStart = performance.now();
         } else {
           const quality = settings.model ?? defaultQuality();
-          const camera = startCamera(video, settings.facingMode).then((s) => {
-            // Track the stream as soon as it exists so a failed model load still releases it.
-            stream = s;
-            if (disposed) stopCamera(s, video);
-            return s;
-          });
+          const source = videoDemo
+            ? playLoop(video, videoDemo)
+            : startCamera(video, settings.facingMode).then((s) => {
+                // Track the stream as soon as it exists so a failed model load still releases it.
+                stream = s;
+                if (disposed) stopCamera(s, video);
+              });
           const model = getDetector(quality, (p) => {
             if (!disposed) setLoad({ state: 'loading', ...loadMessage(p) });
           });
-          const [, d] = await Promise.all([camera, model]);
+          const [, d] = await Promise.all([source, model]);
           detector = d;
           if (disposed) return dispose();
         }
@@ -346,7 +374,9 @@ export function Workout(props: WorkoutProps) {
         const message =
           err instanceof CameraError
             ? err.message
-            : `The AI model couldn't start (${(err as Error)?.message ?? 'unknown error'}). Check your connection and try again.`;
+            : videoDemo && err instanceof DemoVideoError
+              ? err.message
+              : `The AI model couldn't start (${(err as Error)?.message ?? 'unknown error'}). Check your connection and try again.`;
         setLoad({ state: 'error', message, canRetry: !(err instanceof CameraError && err.kind === 'insecure') });
       }
     })();
@@ -374,7 +404,7 @@ export function Workout(props: WorkoutProps) {
   };
 
   const retry = () => {
-    setLoad({ state: 'loading', message: 'Starting the camera…', fraction: null });
+    setLoad({ state: 'loading', message: demo ? 'Preparing the demo…' : 'Starting the camera…', fraction: null });
     setAttempt((a) => a + 1);
   };
 
@@ -382,7 +412,7 @@ export function Workout(props: WorkoutProps) {
     <div className="workout">
       <div className="stage-wrap" ref={wrapRef}>
         <div className="stage" style={{ width: stage.w, height: stage.h }}>
-          <video ref={videoRef} className={mirror ? 'mirror' : undefined} playsInline muted autoPlay hidden={demo} />
+          <video ref={videoRef} className={mirror ? 'mirror' : undefined} playsInline muted autoPlay hidden={simDemo} />
           <canvas ref={canvasRef} className={mirror ? 'mirror' : undefined} />
         </div>
       </div>
@@ -408,7 +438,7 @@ export function Workout(props: WorkoutProps) {
         </div>
 
         <div className="hud-middle">
-          {demo && <div className="demo-tag">Demo athlete</div>}
+          {demo && <div className="demo-tag">{simDemo ? 'Test athlete' : 'AI-generated person · not real'}</div>}
           {hud.go ? (
             <div className="hint ready" role="status">
               GO!
@@ -500,7 +530,9 @@ export function Workout(props: WorkoutProps) {
               </div>
             )}
             <p className="muted" style={{ fontSize: 14 }}>
-              Prop your phone up and step back so your whole body is in view.
+              {demo
+                ? 'The coach tracks the person in the video exactly like it tracks you through your camera.'
+                : 'Prop your phone up and step back so your whole body is in view.'}
             </p>
           </div>
         </div>
@@ -516,9 +548,11 @@ export function Workout(props: WorkoutProps) {
                 Try again
               </button>
             )}
-            <button className="btn" onClick={props.onDemoInstead}>
-              Watch the demo instead
-            </button>
+            {props.onDemoInstead && !demo && (
+              <button className="btn" onClick={props.onDemoInstead}>
+                Watch the demo instead
+              </button>
+            )}
             <button className="btn ghost" onClick={props.onExit}>
               Back
             </button>
