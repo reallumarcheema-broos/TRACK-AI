@@ -18,9 +18,9 @@ const split = (file: string) => {
   return { id: name.slice(0, dot) as ExerciseId, ext: name.slice(dot + 1).toLowerCase() };
 };
 
-/** Maps `../assets/people/squat.jpg` → `{ squat: url }`. */
-export function photosById(files: Record<string, string>): Partial<Record<ExerciseId, string>> {
-  const out: Partial<Record<ExerciseId, string>> = {};
+/** Maps `../assets/people/squat.jpg` → `{ squat: url }` (plus `hero` for the home page). */
+export function photosById(files: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
   for (const [file, url] of Object.entries(files)) out[split(file).id] = url;
   return out;
 }
@@ -51,6 +51,8 @@ const VIDEOS = videosById(import.meta.glob<string>('../assets/demo/*.{mp4,webm}'
 export const SIM_DEMO = typeof location !== 'undefined' && new URLSearchParams(location.search).has('sim');
 
 export const personPhoto = (id: ExerciseId): string | undefined => PHOTOS[id];
+/** The big home-page photo (`people/hero.jpg`). */
+export const heroPhoto = (): string | undefined => PHOTOS.hero;
 
 /** The demo video for an exercise in a format this browser plays, if there is one. */
 export function demoVideo(id: ExerciseId): string | undefined {

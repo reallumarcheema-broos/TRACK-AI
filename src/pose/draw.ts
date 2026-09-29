@@ -13,8 +13,8 @@ export interface SkeletonStyle {
 const COLORS = {
   bone: 'rgba(255,255,255,0.9)',
   boneFar: 'rgba(255,255,255,0.35)',
-  joint: '#3ef08a',
-  fault: '#ff4d5e',
+  joint: '#e9b574',
+  fault: '#ff5a45',
   avatar: '#c9d4e8',
   avatarFar: 'rgba(201,212,232,0.35)',
 };
@@ -68,12 +68,12 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, f: PoseFrame, style:
     const faulty = style.faultJoints.has(i);
     const r = line * (faulty ? 0.95 : 0.7);
     if (faulty) {
-      ctx.fillStyle = `rgba(255,77,94,${0.25 + 0.25 * pulse})`;
+      ctx.fillStyle = `rgba(255,90,69,${0.25 + 0.25 * pulse})`;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r * (2.2 + pulse), 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = faulty ? COLORS.fault : farSet.has(i) ? 'rgba(62,240,138,0.4)' : COLORS.joint;
+    ctx.fillStyle = faulty ? COLORS.fault : farSet.has(i) ? 'rgba(233,181,116,0.45)' : COLORS.joint;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();

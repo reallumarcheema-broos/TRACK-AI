@@ -146,7 +146,7 @@ export function Summary({ result, entryId, aiDebrief, voice, onAgain, onHome, on
               Major issue
             </span>
             <span>
-              <i style={{ background: 'var(--border)' }} />
+              <i style={{ background: 'var(--line-strong)' }} />
               Didn't count
             </span>
           </div>

@@ -7,7 +7,10 @@ doing right, what's wrong and how to fix it. After the set you get a spoken debr
 breakdown.
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="260" alt="Exercise picker">
+  <img src="docs/screenshots/desktop.png" width="820" alt="TRACK AI landing page: condensed headline, live-set and AI-tip cards, feature strip">
+</p>
+<p align="center">
+  <img src="docs/screenshots/home.png" width="260" alt="Home on a phone">
   <img src="docs/screenshots/summary.png" width="260" alt="Set summary with coach debrief and rep timeline">
 </p>
 
@@ -22,7 +25,8 @@ breakdown.
 - **AI debrief with Claude** (optional): after the set, the server turns your numbers into two or three
   spoken sentences of coaching. Without an API key the app uses its on-device summary.
 - **Installable PWA**, works offline once loaded, keeps the screen awake during a set, history of your
-  sets.
+  sets. A warm, editorial look: cream and espresso with bronze accents, Bebas Neue headlines and Inter
+  text (both bundled, SIL Open Font License, see `src/assets/fonts`).
 - **AI people, not stick figures**: exercise photos and camera-free demo videos of photorealistic
   **AI-generated people who don't exist**. The demo runs the real tracking on the video, exactly like
   a camera feed, and the app labels them as AI-generated ([how to create them](#ai-people)).

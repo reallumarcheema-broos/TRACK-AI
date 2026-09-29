@@ -30,7 +30,7 @@ export function Settings({ settings, onChange, onTestVoice, onBack }: SettingsPr
         <button className="icon-btn" onClick={onBack} aria-label="Back">
           <IconBack />
         </button>
-        <h1 style={{ fontSize: 22 }}>Settings</h1>
+        <h1>Settings</h1>
       </header>
 
       <section className="card">

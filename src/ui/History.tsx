@@ -37,7 +37,7 @@ export function History({ onBack }: { onBack: () => void }) {
         <button className="icon-btn" onClick={onBack} aria-label="Back">
           <IconBack />
         </button>
-        <h1 style={{ fontSize: 22 }}>History</h1>
+        <h1>History</h1>
         <span className="spacer" />
         {entries.length > 0 && (
           <button

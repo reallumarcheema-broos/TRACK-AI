@@ -40,46 +40,57 @@ interface Brief {
 
 const BRIEFS: Record<ExerciseId, Brief> = {
   squat: {
-    person: 'a woman in her late twenties with dark curly hair in a ponytail, wearing a black sports top and grey leggings',
+    person: 'a woman in her late twenties with dark curly hair in a ponytail, wearing a black sports top and taupe leggings',
     photo: 'at the bottom of a bodyweight squat, thighs parallel to the floor, arms held forward for balance',
     video: 'slow bodyweight squats, standing tall between reps',
   },
   pushup: {
-    person: 'a man in his thirties with short black hair and a trimmed beard, wearing a navy t-shirt and black shorts',
+    person: 'a man in his thirties with short black hair and a trimmed beard, wearing a charcoal t-shirt and black shorts',
     photo: 'holding the bottom of a push-up, body in one straight line from head to heels',
     video: 'slow push-ups on the floor, arms fully straight at the top of every rep',
   },
   lunge: {
-    person: 'a woman in her forties with short blonde hair, wearing a teal tank top and black leggings',
+    person: 'a woman in her forties with short blonde hair, wearing an olive tank top and black leggings',
     photo: 'in a forward lunge, front thigh parallel to the floor, back knee just above the floor',
     video: 'slow alternating forward lunges, standing tall between reps',
   },
   rdl: {
-    person: 'a man in his twenties with a shaved head, wearing a white t-shirt and dark joggers, holding a dumbbell in each hand',
+    person: 'a man in his twenties with a shaved head, wearing a sand-coloured t-shirt and dark joggers, holding a dumbbell in each hand',
     photo: 'hinging forward at the hips in a Romanian deadlift with a flat back, dumbbells just below the knees',
     video: 'slow Romanian deadlifts with dumbbells, hips pushing back with a flat back, standing tall between reps',
   },
   curl: {
-    person: 'a woman in her thirties with long straight black hair, wearing a burgundy sports top, holding a dumbbell in each hand',
+    person: 'a woman in her thirties with long straight black hair, wearing a rust-coloured sports top, holding a dumbbell in each hand',
     photo: 'curling both dumbbells up to the shoulders with the elbows tucked at her sides',
     video: 'slow bicep curls with both dumbbells, arms fully straight at the bottom of every rep',
   },
   press: {
-    person: 'a man in his fifties with short grey hair, wearing a green t-shirt, holding a dumbbell in each hand',
+    person: 'a man in his fifties with short grey hair, wearing an espresso-brown t-shirt, holding a dumbbell in each hand',
     photo: 'pressing both dumbbells overhead with straight arms',
     video: 'slow standing overhead presses with both dumbbells, lowering them to the shoulders between reps',
   },
   jumping_jack: {
-    person: 'a woman in her twenties with long braided hair, wearing a yellow sports top and black shorts',
+    person: 'a woman in her twenties with long braided hair, wearing a cream sports top and black shorts',
     photo: 'mid jumping jack with both arms overhead and feet wide apart',
     video: 'steady jumping jacks, arms all the way overhead and feet wide on every rep',
   },
   plank: {
-    person: 'a man in his thirties with wavy brown hair, wearing a grey t-shirt and black leggings',
+    person: 'a man in his thirties with wavy brown hair, wearing a stone-grey t-shirt and black leggings',
     photo: 'holding a forearm plank, body in one straight line from head to heels',
     video: 'holding a steady forearm plank for the whole clip, body in one straight line, breathing calmly',
   },
 };
+
+/** The look of every picture: matches the app's warm cream-and-espresso design. */
+const SETTING =
+  'in a warm minimalist studio with a soft beige backdrop and a pale wooden floor, warm golden side light, ' +
+  'muted earthy tones, editorial fitness photography';
+
+/** The big home-page photo. */
+const HERO_PROMPT =
+  'Photorealistic editorial fitness photograph of a fit woman in her thirties with dark hair in a low bun, wearing an ' +
+  `espresso-brown sports top and matching leggings, holding a deep kneeling lunge stretch on a mat and looking ahead calmly, ${SETTING}. ` +
+  'Her whole body is in the left half of the frame; the right half is empty warm backdrop. Sharp focus. No text, no logos, no watermark.';
 
 const VIEW_TEXT = { side: 'Shown exactly from the side, in profile', front: 'Facing the camera', diagonal: 'Seen at a 45° angle' };
 
@@ -88,8 +99,8 @@ function photoPrompt(id: ExerciseId): string {
   const view = VIEW_TEXT[EXERCISE_BY_ID[id].camera.recommended];
   return (
     `Photorealistic photo of ${b.person}, ${b.photo}. ${view}. The whole body is visible from head to toe, ` +
-    'centred, in a bright modern gym with a plain dark wall behind. Natural soft light, sharp focus, ' +
-    'camera at hip height about 2.5 m away. Plain athletic clothes without logos. No text, no watermark.'
+    `centred, ${SETTING}. Sharp focus, camera at hip height about 2.5 m away. ` +
+    'Plain athletic clothes without logos. No text, no watermark.'
   );
 }
 
@@ -97,8 +108,8 @@ function videoPrompt(id: ExerciseId): string {
   const b = BRIEFS[id];
   const view = VIEW_TEXT[EXERCISE_BY_ID[id].camera.recommended];
   return (
-    `A phone on a tripod at hip height, 2.5 m away, films ${b.person} doing ${b.video} in a bright modern gym ` +
-    `with a plain dark wall. ${view}. The whole body stays in frame from head to toe for the entire clip. ` +
+    `A phone on a tripod at hip height, 2.5 m away, films ${b.person} doing ${b.video} ${SETTING}. ` +
+    `${view}. The whole body stays in frame from head to toe for the entire clip. ` +
     'Realistic motion at a natural pace. The camera never moves; no cuts, no text, no music.'
   );
 }
@@ -138,10 +149,10 @@ async function pickModels(): Promise<{ imagen?: string; veo?: string }> {
   };
 }
 
-async function generatePhoto(model: string, id: ExerciseId): Promise<Buffer> {
+async function generatePhoto(model: string, prompt: string, aspectRatio: string): Promise<Buffer> {
   const out = await api<{ predictions?: { bytesBase64Encoded?: string }[] }>(`models/${model}:predict`, {
-    instances: [{ prompt: photoPrompt(id) }],
-    parameters: { sampleCount: 1, aspectRatio: '4:3', personGeneration: 'allow_adult' },
+    instances: [{ prompt }],
+    parameters: { sampleCount: 1, aspectRatio, personGeneration: 'allow_adult' },
   });
   const b64 = out.predictions?.[0]?.bytesBase64Encoded;
   if (!b64) throw new Error('no image came back (the safety filter may have blocked the prompt)');
@@ -198,11 +209,12 @@ function ffmpeg(args: string[]): void {
   if (run.error || run.status !== 0) throw new Error(`ffmpeg failed (${run.error?.message ?? `exit ${run.status}`})`);
 }
 
-/** A JPEG small enough for the exercise cards. */
-function makePhoto(input: string, id: ExerciseId): string {
+/** A web-sized JPEG: cards need about 960 px, the home-page hero more. */
+function makePhoto(input: string, name: string): string {
   mkdirSync(PHOTOS, { recursive: true });
-  const out = path.join(PHOTOS, `${id}.jpg`);
-  ffmpeg(['-i', input, '-vf', "scale='min(960,iw)':-2", '-q:v', '4', out]);
+  const out = path.join(PHOTOS, `${name}.jpg`);
+  const width = name === 'hero' ? 1400 : 960;
+  ffmpeg(['-i', input, '-vf', `scale='min(${width},iw)':-2`, '-q:v', '4', out]);
   return out;
 }
 
@@ -224,7 +236,7 @@ function makeVideo(input: string, id: ExerciseId): string {
   return out;
 }
 
-function credit(id: ExerciseId, kind: 'photo' | 'video', entry: Record<string, string>): void {
+function credit(id: string, kind: 'photo' | 'video', entry: Record<string, string>): void {
   const all = existsSync(CREDITS) ? JSON.parse(readFileSync(CREDITS, 'utf8')) : {};
   all[id] = { ...all[id], [kind]: { ...entry, note: 'AI-generated. This person does not exist.' } };
   writeFileSync(CREDITS, `${JSON.stringify(all, null, 2)}\n`);
@@ -243,8 +255,8 @@ async function main(): Promise<void> {
     return;
   }
   const args = process.argv.slice(2);
-  const ids = args.filter((a): a is ExerciseId => a in EXERCISE_BY_ID);
-  const targets: ExerciseId[] = ids.length ? ids : EXERCISES.map((e) => e.id);
+  const named = args.filter((a) => !a.startsWith('--'));
+  const targets: ExerciseId[] = named.length ? named.filter((a): a is ExerciseId => a in EXERCISE_BY_ID) : EXERCISES.map((e) => e.id);
 
   if (args[0] === '--import') {
     const [id, file] = [args[1] as ExerciseId, args[2]];
@@ -258,8 +270,14 @@ async function main(): Promise<void> {
 
   const photos = !args.includes('--videos');
   const videos = !args.includes('--photos');
-  const cost = (photos ? targets.length * PRICE.photo : 0) + (videos ? targets.length * PRICE.videoSecond * PRICE.videoSeconds : 0);
-  console.log(`Plan: ${[photos && `${targets.length} photo(s)`, videos && `${targets.length} video(s)`].filter(Boolean).join(' + ')} for ${targets.join(', ')}`);
+  // The home-page photo comes with a full run, or ask for it by name: `npm run people -- --yes hero`.
+  const hero = photos && (named.length === 0 || named.includes('hero'));
+  const photoCount = (photos ? targets.length : 0) + (hero ? 1 : 0);
+  const cost = photoCount * PRICE.photo + (videos ? targets.length * PRICE.videoSecond * PRICE.videoSeconds : 0);
+  console.log(
+    `Plan: ${[photoCount && `${photoCount} photo(s)`, videos && targets.length && `${targets.length} video(s)`].filter(Boolean).join(' + ')} ` +
+      `for ${[hero && 'home page', ...targets].filter(Boolean).join(', ')}`,
+  );
   console.log(`Estimated cost: about $${cost.toFixed(2)} on the Google account that owns the key.`);
   if (!args.includes('--yes')) {
     console.log('Nothing generated yet. Add --yes to go ahead.');
@@ -270,19 +288,31 @@ async function main(): Promise<void> {
   if (probe.error || probe.status !== 0) throw new Error('ffmpeg not found: install it or point FFMPEG_PATH at it.');
 
   const models = await pickModels();
-  if (photos && !models.imagen) throw new Error('No Imagen model is available to this key.');
-  if (videos && !models.veo) throw new Error('No Veo model is available to this key (Veo needs billing enabled).');
+  if (photoCount && !models.imagen) throw new Error('No Imagen model is available to this key.');
+  if (videos && targets.length && !models.veo) throw new Error('No Veo model is available to this key (Veo needs billing enabled).');
   console.log(`Models: ${[photos && models.imagen, videos && models.veo].filter(Boolean).join(', ')}`);
   mkdirSync(CACHE, { recursive: true });
 
   let failed = 0;
+  if (hero) {
+    try {
+      process.stdout.write('home page: photo… ');
+      const raw = path.join(CACHE, 'hero.png');
+      writeFileSync(raw, await generatePhoto(models.imagen!, HERO_PROMPT, '3:4'));
+      console.log(`✓ ${path.relative(root, makePhoto(raw, 'hero'))}`);
+      credit('hero', 'photo', { model: models.imagen!, prompt: HERO_PROMPT, date: new Date().toISOString().slice(0, 10) });
+    } catch (err) {
+      failed++;
+      console.log(`✗ ${(err as Error).message}`);
+    }
+  }
   for (const id of targets) {
     const date = new Date().toISOString().slice(0, 10);
     if (photos) {
       try {
         process.stdout.write(`${id}: photo… `);
         const raw = path.join(CACHE, `${id}.png`);
-        writeFileSync(raw, await generatePhoto(models.imagen!, id));
+        writeFileSync(raw, await generatePhoto(models.imagen!, photoPrompt(id), '4:3'));
         console.log(`✓ ${path.relative(root, makePhoto(raw, id))}`);
         credit(id, 'photo', { model: models.imagen!, prompt: photoPrompt(id), date });
       } catch (err) {

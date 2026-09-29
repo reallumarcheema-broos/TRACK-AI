@@ -57,7 +57,7 @@ export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStar
       <section className="card placement">
         <PlacementDiagram view={exercise.camera.recommended} floor={exercise.horizontal} />
         <div className="stack" style={{ gap: 8 }}>
-          <h2 style={{ fontSize: 17 }}>Set up your phone</h2>
+          <h2 className="card-title">Set up your phone</h2>
           <p className="muted">{exercise.camera.placement}</p>
           <p style={{ fontSize: 14 }}>{exercise.camera.why}</p>
         </div>

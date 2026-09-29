@@ -118,14 +118,48 @@ export const IconTrash = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
-export function Logo({ size = 34 }: { size?: number }) {
+export const IconSpark = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5" />
+  </Icon>
+);
+
+export const IconTarget = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+  </Icon>
+);
+
+export const IconWave = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0" />
+  </Icon>
+);
+
+export const IconChart = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 20V14M10 20V9M16 20V12M22 20V5" />
+  </Icon>
+);
+
+export const IconArrow = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Icon>
+);
+
+/** The mark: three tracked joints and the angle between them. */
+export function Logo({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      <rect width="64" height="64" rx="16" fill="#3ef08a" />
-      <g fill="none" stroke="#04200f" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="32" cy="15" r="5" fill="#04200f" stroke="none" />
-        <path d="M32 22v14M18 26l14 4 14-4M32 36l-9 14M32 36l9 14" />
-      </g>
+      <rect width="64" height="64" rx="16" fill="#17120e" />
+      <path d="M16 46L28 20L48 38" fill="none" stroke="#d8a066" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M23.8 29.1A10 10 0 0 0 35.4 26.7" fill="none" stroke="#d8a066" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+      <circle cx="16" cy="46" r="5" fill="#f6efe6" />
+      <circle cx="28" cy="20" r="5" fill="#f6efe6" />
+      <circle cx="48" cy="38" r="5" fill="#f6efe6" />
     </svg>
   );
 }
