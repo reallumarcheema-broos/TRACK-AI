@@ -72,7 +72,7 @@ export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStar
             Front (selfie)
           </button>
           <button aria-pressed={facingMode === 'environment'} onClick={() => onFacing('environment')}>
-            Back
+            Back camera
           </button>
         </div>
       </section>

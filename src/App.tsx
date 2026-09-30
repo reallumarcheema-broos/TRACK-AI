@@ -12,7 +12,6 @@ import { Home } from './ui/Home';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { Summary } from './ui/Summary';
-import { Workout } from './ui/Workout';
 
 type Route =
   | { name: 'home' }
@@ -21,6 +20,69 @@ type Route =
   | { name: 'summary'; id: ExerciseId; result: SetResult; entryId: string; demo: boolean }
   | { name: 'history' }
   | { name: 'settings' };
+
+// The workout screen (camera, body tracking, coach) is the biggest part of the app, so it downloads
+// on demand. The setup screen fetches it ahead of time, so pressing Start is still instant.
+let workoutScreen: typeof import('./ui/Workout').Workout | null = null;
+let workoutLoad: Promise<void> | null = null;
+function loadWorkout(): Promise<void> {
+  workoutLoad ??= import('./ui/Workout').then(
+    (m) => {
+      workoutScreen = m.Workout;
+    },
+    (err: unknown) => {
+      workoutLoad = null;
+      throw err;
+    },
+  );
+  return workoutLoad;
+}
+
+function useWorkoutScreen(wanted: boolean) {
+  const [, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!wanted || workoutScreen) return;
+    let live = true;
+    loadWorkout().then(
+      () => live && setLoaded(true),
+      () => live && setFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [wanted]);
+  return { Workout: workoutScreen, failed };
+}
+
+/** Shown while the workout screen downloads (a slow first visit) or if it can't. */
+function WorkoutPending(props: { failed: boolean; demo: boolean; onBack: () => void }) {
+  return (
+    <main className="workout">
+      <div className="overlay-center">
+        <div className="card">
+          {props.failed ? (
+            <>
+              <p style={{ fontWeight: 800, fontSize: 18 }}>Can't start the coach</p>
+              <p className="muted">It didn't finish downloading. Check your connection and try again.</p>
+              <button className="btn primary" onClick={() => location.reload()}>
+                Try again
+              </button>
+              <button className="btn ghost" onClick={props.onBack}>
+                Back
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="spinner" />
+              <p style={{ fontWeight: 700 }}>{props.demo ? 'Preparing the demo…' : 'Starting the camera…'}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
 
 function initialRoutes(): Route[] {
   const params = new URLSearchParams(location.search);
@@ -82,6 +144,7 @@ export function App() {
 
   const route = stack[stack.length - 1];
   useEffect(() => window.scrollTo(0, 0), [route]);
+  const { Workout, failed: workoutFailed } = useWorkoutScreen(route.name === 'setup' || route.name === 'workout' || route.name === 'summary');
 
   const unlockAudio = () => {
     services.engine.unlock();
@@ -113,6 +176,7 @@ export function App() {
     }
 
     case 'workout': {
+      if (!Workout) return <WorkoutPending failed={workoutFailed} demo={route.demo} onBack={back} />;
       const target = targetFor(route.id);
       return (
         <Workout

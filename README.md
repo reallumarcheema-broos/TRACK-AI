@@ -24,7 +24,8 @@ breakdown.
   and counts down planks.
 - **AI debrief with Claude** (optional): after the set, the server turns your numbers into two or three
   spoken sentences of coaching. Without an API key the app uses its on-device summary.
-- **Installable PWA**, works offline once loaded, keeps the screen awake during a set, history of your
+- **Installable PWA**: the whole app is saved on the first visit so it opens offline (the body-tracking
+  model is saved the first time you start a set), keeps the screen awake during a set, history of your
   sets. A warm, editorial look: cream and espresso with bronze accents, Bebas Neue headlines and Inter
   text (both bundled, SIL Open Font License, see `src/assets/fonts`).
 - **AI people, not stick figures**: exercise photos and camera-free demo videos of photorealistic

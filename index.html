@@ -12,6 +12,9 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Fetch the fonts with the page, not after the CSS, so headings don't jump when they swap in. -->
+    <link rel="preload" href="/src/assets/fonts/bebas-neue-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>TRACK AI Coach</title>
   </head>
   <body>

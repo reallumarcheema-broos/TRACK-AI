@@ -11,7 +11,7 @@ import { defaultQuality, getDetector, type LoadProgress, type PoseDetector } fro
 import { drawDemoBackdrop, drawSkeleton } from '../pose/draw';
 import { ScreenWakeLock } from '../pose/wakeLock';
 import { demoVideo, SIM_DEMO } from '../media/people';
-import { defaultCamera, demoScript, simulate, type SimFrame } from '../sim/simulator';
+import type { SimFrame } from '../sim/simulator';
 import type { Settings } from '../state/settings';
 import { IconAlert, IconCheck, IconClose, IconCoach, IconMute, IconSound } from './icons';
 
@@ -124,10 +124,8 @@ export function Workout(props: WorkoutProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const finishRef = useRef<() => void>(() => {});
-  const [aspect, setAspect] = useState(() => {
-    const cam = defaultCamera(exercise.id);
-    return simDemo ? cam.width / cam.height : 9 / 16;
-  });
+  // Portrait until the camera reports its size; the test athlete films floor moves in landscape.
+  const [aspect, setAspect] = useState(() => (simDemo && exercise.horizontal ? 16 / 9 : 9 / 16));
   const stage = useStageSize(wrapRef, aspect);
   const [load, setLoad] = useState<Load>({ state: 'loading', message: demo ? 'Preparing the demo…' : 'Starting the camera…', fraction: null });
   const [hud, setHud] = useState<Hud>(INITIAL_HUD);
@@ -342,6 +340,9 @@ export function Workout(props: WorkoutProps) {
       try {
         if (demo && !simDemo && !videoDemo) throw new Error('There is no demo video for this exercise yet');
         if (simDemo) {
+          // Test-only code, so it downloads only when asked for.
+          const { defaultCamera, demoScript, simulate } = await import('../sim/simulator');
+          if (disposed) return;
           demoFrames = simulate({ ...demoScript(exercise.id, target ?? 0), absentSeconds: 1.2 });
           const cam = defaultCamera(exercise.id);
           canvas.width = cam.width;
@@ -409,7 +410,7 @@ export function Workout(props: WorkoutProps) {
   };
 
   return (
-    <div className="workout">
+    <main className="workout">
       <div className="stage-wrap" ref={wrapRef}>
         <div className="stage" style={{ width: stage.w, height: stage.h }}>
           <video ref={videoRef} className={mirror ? 'mirror' : undefined} playsInline muted autoPlay hidden={simDemo} />
@@ -499,7 +500,7 @@ export function Workout(props: WorkoutProps) {
           )}
 
           {!hold && hud.repTones.length + (target ?? 0) > 0 && (
-            <div className="rep-dots" aria-label={`${hud.reps} reps`}>
+            <div className="rep-dots" role="img" aria-label={target ? `${hud.reps} of ${target} reps` : `${hud.reps} reps`}>
               {hud.repTones.map((t, i) => (
                 <span key={i} className={t === 'good' ? '' : t} />
               ))}
@@ -559,6 +560,6 @@ export function Workout(props: WorkoutProps) {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

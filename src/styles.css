@@ -39,6 +39,7 @@
   --good: #2f7a4a;
   --good-ink: #0f2a18;
   --warn: #b86e0c;
+  --warn-text: #8c5306;
   --bad: #b83a28;
   --info: #3f6590;
   --radius: 22px;
@@ -415,7 +416,7 @@ h2.eyebrow {
 
 .badge.warn {
   background: rgba(184, 110, 12, 0.14);
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 .badge.bad {
@@ -438,7 +439,7 @@ h2.eyebrow {
   border: 0;
   background: transparent;
   font-weight: 600;
-  color: var(--muted);
+  color: #54483f;
   cursor: pointer;
 }
 
@@ -1161,6 +1162,7 @@ input[type='range'] {
   width: min(560px, 100%);
   max-height: 92vh;
   overflow: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 14px;
   padding: 22px 18px calc(18px + var(--safe-b));
@@ -1983,7 +1985,7 @@ details.tips ul {
 
 .stat .v small {
   font-size: 22px;
-  color: var(--faint);
+  color: var(--muted);
 }
 
 .stat .k {
@@ -2177,7 +2179,8 @@ details.tips ul {
   font-variant-numeric: tabular-nums;
   padding: 6px 10px 4px;
   border-radius: 10px;
-  background: var(--sand);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
   line-height: 1;
 }
 
@@ -2186,7 +2189,7 @@ details.tips ul {
 }
 
 .score-pill.warn {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 .score-pill.bad {

@@ -164,16 +164,29 @@ export class PoseDetector {
       return;
     }
     this.tuning = 'running';
-    PoseDetector.build(this.fileset, this.model, 'CPU')
-      .then((cpu) => {
-        if (this.closed) return cpu.close();
-        const samples: number[] = [];
-        for (let i = 0; i < 4; i++) {
-          const t0 = performance.now();
-          cpu.detectForVideo(video, this.nextTs(this.lastTs));
-          samples.push(performance.now() - t0);
+    PoseDetector.build(this.fileset, this.model, 'CPU').then(
+      (cpu) => {
+        // The set may have ended while the CPU model loaded, leaving a stopped video with no
+        // frame to time (MediaPipe errors on it): drop the trial and run it again next set.
+        if (this.closed || video.readyState < 2 || video.videoWidth === 0) {
+          cpu.close();
+          this.timings = [];
+          this.tuning = this.closed ? 'done' : 'pending';
+          return;
         }
-        if (median(samples.slice(1)) < gpuMs * 0.8) {
+        let faster = false;
+        try {
+          const samples: number[] = [];
+          for (let i = 0; i < 4; i++) {
+            const t0 = performance.now();
+            cpu.detectForVideo(video, this.nextTs(this.lastTs));
+            samples.push(performance.now() - t0);
+          }
+          faster = median(samples.slice(1)) < gpuMs * 0.8;
+        } catch {
+          faster = false;
+        }
+        if (faster) {
           const gpu = this.landmarker;
           this.landmarker = cpu;
           this.delegate = 'CPU';
@@ -181,11 +194,12 @@ export class PoseDetector {
         } else {
           cpu.close();
         }
-      })
-      .catch(() => {})
-      .finally(() => {
         this.tuning = 'done';
-      });
+      },
+      () => {
+        this.tuning = 'done';
+      },
+    );
   }
 
   close(): void {

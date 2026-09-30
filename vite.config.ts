@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +77,50 @@ function precompress(): Plugin {
 }
 
 /**
+ * Fills in the service worker's list of app files and names its cache after a hash of them, so the
+ * whole app (including screens that download on demand) works offline after the first visit and a
+ * new deploy replaces the old files. The pose models and WASM runtime are big, so they are cached
+ * the first time a set starts instead.
+ */
+function serviceWorkerPrecache(): Plugin {
+  let outDir = 'dist';
+  let publicDir = '';
+  return {
+    name: 'track-ai:sw-precache',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+      publicDir = config.publicDir;
+    },
+    async writeBundle(_options, bundle) {
+      const hash = createHash('sha256');
+      const files: string[] = [];
+      for (const [name, out] of Object.entries(bundle).sort(([a], [b]) => a.localeCompare(b))) {
+        hash.update(name).update(out.type === 'chunk' ? out.code : out.source);
+        // index.html is cached as './'; videos stream in ranges, which the Cache API can't store.
+        if (name !== 'index.html' && !/\.(map|mp4|webm)$/.test(name)) files.push(name);
+      }
+      const icons = (await readdir(path.join(publicDir, 'icons'))).map((f) => `icons/${f}`);
+      for (const name of ['manifest.webmanifest', ...icons]) {
+        hash.update(name).update(await readFile(path.join(publicDir, name)));
+        files.push(name);
+      }
+      const swFile = path.join(outDir, 'sw.js');
+      const sw = await readFile(swFile, 'utf8');
+      const build = "const BUILD = 'dev';";
+      const precache = 'const PRECACHE = [];';
+      if (!sw.includes(build) || !sw.includes(precache)) this.error('sw.js no longer has the BUILD/PRECACHE placeholders');
+      await writeFile(
+        swFile,
+        sw
+          .replace(build, `const BUILD = '${hash.digest('hex').slice(0, 12)}';`)
+          .replace(precache, `const PRECACHE = ${JSON.stringify(files.map((f) => `./${f}`))};`),
+      );
+    },
+  };
+}
+
+/**
  * Production Content-Security-Policy: the page may only talk to itself, Google's model CDN and
  * the optional debrief API. Besides hardening, this stops MediaPipe's built-in usage-metrics
  * logger (odml.pa.googleapis.com) — the app promises that everything stays on the device.
@@ -99,6 +144,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mediapipeWasm(),
     contentSecurityPolicy(loadEnv(mode, root, 'VITE_').VITE_COACH_API_URL),
+    serviceWorkerPrecache(),
     precompress(),
     mode === 'https' ? basicSsl() : null,
   ],

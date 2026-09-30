@@ -20,6 +20,18 @@ export function GetAppButtons() {
   const [sheet, setSheet] = useState<Target | null>(null);
   const opener = useRef<HTMLElement | null>(null);
 
+  // The open sheet owns a history entry, so the phone's back gesture closes it instead of leaving the page.
+  useEffect(() => {
+    if (!sheet) return;
+    const onPop = () => {
+      if (history.state?.sheet) return;
+      setSheet(null);
+      opener.current?.focus();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [sheet]);
+
   if (install.standalone) return null;
   if (install.installed) {
     return <p className="installed-note">✓ Installed. Open TRACK AI from your home screen.</p>;
@@ -32,10 +44,12 @@ export function GetAppButtons() {
       const outcome = await promptInstall();
       if (outcome !== 'unavailable') return;
     }
+    if (!history.state?.sheet) history.pushState({ ...history.state, sheet: true }, '');
     setSheet(target);
   };
 
   const close = () => {
+    if (history.state?.sheet) return history.back(); // the popstate listener above closes it
     setSheet(null);
     opener.current?.focus();
   };
@@ -45,24 +59,17 @@ export function GetAppButtons() {
       <div className="app-buttons">
         {(['ios', 'android'] as const).map((target) =>
           STORE[target] ? (
-            <a key={target} className="app-btn" href={STORE[target]} target="_blank" rel="noopener" aria-label={`Download for ${NAME[target]}`}>
+            <a key={target} className="app-btn" href={STORE[target]} target="_blank" rel="noopener">
               <IconPhone />
               <span>
-                <small>Download for</small>
-                {NAME[target]}
+                <small>Download for</small> {NAME[target]}
               </span>
             </a>
           ) : (
-            <button
-              key={target}
-              className="app-btn"
-              onClick={(e) => void open(target, e.currentTarget)}
-              aria-label={`Install on ${NAME[target]}`}
-            >
+            <button key={target} className="app-btn" onClick={(e) => void open(target, e.currentTarget)}>
               <IconPhone />
               <span>
-                <small>Install on</small>
-                {NAME[target]}
+                <small>Install on</small> {NAME[target]}
               </span>
             </button>
           ),
@@ -75,6 +82,7 @@ export function GetAppButtons() {
 
 function InstallSheet(props: { target: Target; platform: Platform; inAppBrowser: boolean; onClose: () => void }) {
   const { target, platform, inAppBrowser, onClose } = props;
+  const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -83,9 +91,31 @@ function InstallSheet(props: { target: Target; platform: Platform; inAppBrowser:
 
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current();
+    // A modal: the page behind stays put and Tab cycles through the sheet's own controls.
+    // Hiding the page's scrollbar would widen it, so pad by the scrollbar's width meanwhile.
+    const { overflow, paddingRight } = document.body.style;
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onCloseRef.current();
+      const sheet = sheetRef.current;
+      if (e.key !== 'Tab' || !sheet) return;
+      const items = sheet.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = sheet.contains(document.activeElement);
+      if (e.shiftKey ? !inside || document.activeElement === first : !inside || document.activeElement === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first)?.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+      document.body.style.paddingRight = paddingRight;
+    };
   }, []);
 
   const steps: { icon: ReactNode; title: string; text: string }[] =
@@ -103,7 +133,7 @@ function InstallSheet(props: { target: Target; platform: Platform; inAppBrowser:
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <div>
             <span className="eyebrow">Free · No app store · Works offline</span>

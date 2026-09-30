@@ -42,6 +42,24 @@ test('Install on iPhone explains Add to Home Screen', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Install on Android' }).first()).toBeVisible();
 });
 
+test('the install sheet behaves like a phone popup', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Install on iPhone' }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Install on iPhone' });
+  await expect(sheet.getByRole('button', { name: 'Close' })).toBeFocused();
+  // Keyboard focus cycles inside the sheet and the page behind it doesn't scroll.
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  }
+  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden');
+  // The phone's back gesture closes the sheet and stays on the page.
+  await page.goBack();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
+  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).not.toBe('hidden');
+});
+
 test('home-screen shortcuts open the right screen', async ({ page }) => {
   await page.goto('/?view=history');
   await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();

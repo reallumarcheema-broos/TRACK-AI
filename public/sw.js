@@ -1,17 +1,25 @@
 /* TRACK AI Coach service worker: offline app shell + cached AI runtime/model. */
-const VERSION = 'track-ai-v2';
-const SHELL = `${VERSION}-shell`;
-const HEAVY = `${VERSION}-ai`; // WASM runtime + pose models (large, rarely change)
+// `npm run build` fills in this build's files and a hash of them (see vite.config.ts): the whole app
+// is saved on the first visit, so it opens offline straight away, and a new deploy replaces it.
+const BUILD = 'dev';
+const PRECACHE = [];
+const SHELL = `track-ai-shell-${BUILD}`;
+const HEAVY = 'track-ai-v2-ai'; // WASM runtime + pose models (large, rarely change; rename to refresh)
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(['./', './manifest.webmanifest', './icons/icon.svg'])).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches
+      .open(SHELL)
+      .then((c) => c.addAll(['./', ...PRECACHE]))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== SHELL && k !== HEAVY).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

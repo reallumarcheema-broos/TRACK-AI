@@ -110,7 +110,7 @@ export function Settings({ settings, onChange, onTestVoice, onBack }: SettingsPr
           </div>
           <select value={settings.facingMode} onChange={(e) => onChange({ facingMode: e.target.value as SettingsT['facingMode'] })} aria-label="Camera">
             <option value="user">Front (selfie)</option>
-            <option value="environment">Back</option>
+            <option value="environment">Back camera</option>
           </select>
         </div>
         <div className="setting">
