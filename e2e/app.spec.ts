@@ -32,6 +32,23 @@ test('a demo set is tracked, coached and summarised', async ({ page }) => {
   await expect(page.locator('.list-item').first()).toContainText('Jumping Jacks');
 });
 
+test('Install on iPhone explains Add to Home Screen', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Install on iPhone' }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Install on iPhone' });
+  await expect(sheet).toContainText('Add to Home Screen');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Install on Android' }).first()).toBeVisible();
+});
+
+test('home-screen shortcuts open the right screen', async ({ page }) => {
+  await page.goto('/?view=history');
+  await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
+  await page.goto('/?exercise=plank');
+  await expect(page.getByRole('heading', { name: 'Plank' })).toBeVisible();
+});
+
 test('settings persist across reloads', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings' }).click();

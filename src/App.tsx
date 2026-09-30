@@ -31,6 +31,8 @@ function initialRoutes(): Route[] {
     return hasDemo(demo) ? [...setup, { name: 'workout', id: demo, demo: true, key: 0 }] : setup;
   }
   if (ex && ex in EXERCISE_BY_ID) return [{ name: 'home' }, { name: 'setup', id: ex }];
+  // Home-screen shortcut (see manifest.webmanifest).
+  if (params.get('view') === 'history') return [{ name: 'home' }, { name: 'history' }];
   return [{ name: 'home' }];
 }
 

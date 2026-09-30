@@ -72,6 +72,23 @@ npm run dev:https        # self-signed HTTPS on your LAN, e.g. https://192.168.1
 Accept the certificate warning on the phone, prop it up 2–3 m away, turn the volume up and go. For
 day-to-day use, deploy it (below) and **Add to Home Screen** — it runs full-screen like a native app.
 
+## Install on your phone
+
+TRACK AI installs straight from the website as a home-screen app (a PWA): its own icon, full
+screen, works offline, no app store and no account. The **Install on iPhone** and **Install on
+Android** buttons on the home page handle it:
+
+- **Android** (Chrome, Edge, Samsung Internet): one tap opens the phone's own install prompt; if the
+  browser doesn't offer one, a short guide shows the ⋮ → *Install app* steps.
+- **iPhone / iPad**: Apple doesn't allow a one-tap install for web apps, so the button opens a
+  3-step guide: Share → *Add to Home Screen* → *Add*.
+- **On a computer**: a QR code opens the site on the phone. In-app browsers (Instagram, Facebook…)
+  can't install apps, so people there are told to open the page in Safari or Chrome first.
+
+The app must be served over HTTPS for this (every host below does it). If you later publish store
+versions, set `VITE_APP_STORE_URL` and `VITE_PLAY_STORE_URL` at build time and the same buttons
+link to the App Store and Google Play instead.
+
 ## AI people
 
 The exercise photos and the camera-free demo show photorealistic **AI-generated people who don't

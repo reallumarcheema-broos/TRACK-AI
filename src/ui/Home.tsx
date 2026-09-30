@@ -2,8 +2,10 @@ import { useMemo, type ReactNode } from 'react';
 import type { ExerciseId } from '../core/exercise';
 import { EXERCISES } from '../exercises';
 import { hasAiPeople, heroPhoto } from '../media/people';
+import { detectPlatform, isStandalone } from '../pwa/install';
 import { loadHistory } from '../state/history';
 import { ExerciseArt } from './ExerciseArt';
+import { GetAppButtons, QrCode } from './GetApp';
 import { IconChart, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
 
 const VIEW_LABEL = { side: 'Side-on', front: 'Facing camera', diagonal: 'Angled' } as const;
@@ -65,6 +67,8 @@ function useScoreTrend(): { scores: number[]; example: boolean } {
 
 export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () => void; onSettings: () => void }) {
   const hero = heroPhoto();
+  const standalone = isStandalone();
+  const desktop = detectPlatform(navigator.userAgent, navigator.maxTouchPoints) === 'desktop';
   const trend = useScoreTrend();
   const latest = trend.scores[trend.scores.length - 1];
   const change = latest - trend.scores[0];
@@ -84,6 +88,11 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
           <button onClick={() => scrollTo('privacy')}>Privacy</button>
         </nav>
         <span className="spacer" />
+        {!standalone && (
+          <button className="btn get-app-top" onClick={() => scrollTo('get-app')}>
+            Get the app
+          </button>
+        )}
         <button className="icon-btn" onClick={props.onHistory} aria-label="History">
           <IconHistory />
         </button>
@@ -113,6 +122,7 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
               See how it works
             </button>
           </div>
+          <GetAppButtons />
         </div>
 
         <div className="hero-visual">
@@ -208,6 +218,26 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
           </span>
         </div>
       </section>
+
+      {!standalone && (
+        <section id="get-app" className="section get-app" aria-labelledby="get-app-title">
+          <div className="get-app-copy">
+            <span className="eyebrow">Get the app</span>
+            <h2 id="get-app-title">Your coach, one tap away.</h2>
+            <p>
+              Install TRACK AI on your phone: its own icon on your home screen, full screen, and it works offline. Free, with
+              no app store and no account.
+            </p>
+            <GetAppButtons />
+          </div>
+          {desktop && (
+            <div className="qr-card">
+              <QrCode value={`${location.origin}${import.meta.env.BASE_URL}`} />
+              <span>Scan with your phone’s camera</span>
+            </div>
+          )}
+        </section>
+      )}
 
       <footer id="privacy" className="foot">
         <p className="note">

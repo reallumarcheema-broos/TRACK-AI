@@ -1016,6 +1016,297 @@ input[type='range'] {
   }
 }
 
+/* ---- get the app ------------------------------------------------------------------------ */
+
+.app-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 20px 8px 14px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background: var(--ink);
+  color: #f6efe6;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 12px 26px -14px rgba(23, 18, 14, 0.8);
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease;
+}
+
+.app-btn:hover {
+  background: var(--ink-3);
+}
+
+.app-btn:active {
+  transform: scale(0.98);
+}
+
+.app-btn svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--bronze-light);
+}
+
+.app-btn span {
+  display: grid;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.app-btn small {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* In the hero the main button is already dark: keep these lighter. */
+.hero .app-btn {
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow);
+}
+
+.hero .app-btn:hover {
+  background: #fff;
+}
+
+.hero .app-btn svg {
+  color: var(--bronze);
+}
+
+.installed-note {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--good);
+}
+
+.get-app-top {
+  display: none;
+  min-height: 42px;
+  padding: 0 18px;
+  font-size: 12px;
+}
+
+.get-app {
+  align-items: center;
+}
+
+.get-app-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.get-app-copy h2 {
+  font-size: clamp(40px, 11vw, 64px);
+}
+
+.get-app-copy p {
+  color: var(--muted);
+  max-width: 34em;
+}
+
+.qr-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qr {
+  display: block;
+  width: 180px;
+  height: 180px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(23, 18, 14, 0.45);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.2s ease;
+}
+
+.sheet {
+  width: min(560px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 22px 18px calc(18px + var(--safe-b));
+  border-radius: 28px 28px 0 0;
+  background: var(--paper-2);
+  box-shadow: var(--shadow-lg);
+  animation: sheet-in 0.25s ease;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-head h2 {
+  font-size: 40px;
+  margin-top: 6px;
+}
+
+.sheet-head .eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.sheet-qr {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--sand);
+  font-size: 14px;
+}
+
+.sheet-qr .qr {
+  width: 128px;
+  height: 128px;
+}
+
+.sheet-note {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--bronze-soft);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.sheet-note.warn {
+  background: rgba(184, 110, 12, 0.16);
+}
+
+.sheet-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.sheet-steps li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.sheet-steps .n {
+  font-family: var(--display);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--bronze-fill);
+  width: 16px;
+}
+
+.sheet-steps .glyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #f6efe6;
+}
+
+.sheet-steps .glyph svg {
+  width: 22px;
+  height: 22px;
+}
+
+.sheet-steps b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sheet-steps li span:not(.n):not(.glyph) {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+}
+
+@media (min-width: 700px) {
+  .sheet-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+  .sheet {
+    border-radius: 28px;
+    padding: 26px 24px;
+  }
+}
+
+@media (min-width: 960px) {
+  .get-app-top {
+    display: inline-flex;
+  }
+  .get-app {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 40px;
+    padding: 36px 40px;
+    border-radius: 28px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.15));
+    border: 1px solid var(--line);
+  }
+}
+
 /* ---- exercise pictures ------------------------------------------------------------------ */
 
 /* A photo of an AI-generated person, or a monogram until one exists. */

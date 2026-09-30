@@ -1,7 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { initInstall } from './pwa/install';
 import './styles.css';
+
+// Catch the browser's install offer before React renders the "Install on Android" button.
+initInstall();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
