@@ -120,8 +120,12 @@ One-time setup: **Settings → Pages → Build and deployment → Source: GitHub
 lives at `https://<owner>.github.io/<repo>/`, here **https://reallumarcheema-broos.github.io/TRACK-AI/**,
 with HTTPS, so the camera and **Add to Home Screen** work.
 
-GitHub Pages only hosts files, so that build turns the AI debrief off (`VITE_AI_DEBRIEF=off`) and every
-set gets the on-device summary. For AI debriefs, run the server below and point the site at it with
+**Vercel** works too: import the repository (vercel.com → Add New → Project) and click **Deploy**.
+[`vercel.json`](vercel.json) already holds the settings (Vite, `dist`, the pose models bundled, unknown
+addresses open the app, security headers), and every push redeploys.
+
+Both only host files, so those builds turn the AI debrief off (`VITE_AI_DEBRIEF=off`) and every set
+gets the on-device summary. For AI debriefs, run the server below and point the site at it with
 `VITE_COACH_API_URL` instead.
 
 ## Production: app + AI debrief server
