@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:https": "vite --mode https",
     "dev:server": "tsx watch server/index.ts",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && tsx scripts/build-site.ts",
     "preview": "vite preview",
     "start": "tsx server/index.ts",
     "typecheck": "tsc -b",
@@ -24,7 +24,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
     "@mediapipe/tasks-vision": "^1.0.1",
-    "qrcode-generator": "^2.0.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tsx": "^4.23.15"

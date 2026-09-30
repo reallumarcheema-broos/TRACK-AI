@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { clearHistory, loadHistory, type HistoryEntry } from '../state/history';
+import { Ad } from './Ad';
 import { ExerciseArt } from './ExerciseArt';
 import { IconBack, IconTrash } from './icons';
 import { formatDuration } from './Summary';
@@ -106,6 +107,7 @@ export function History({ onBack }: { onBack: () => void }) {
               </div>
             </section>
           ))}
+          <Ad />
         </>
       )}
     </main>

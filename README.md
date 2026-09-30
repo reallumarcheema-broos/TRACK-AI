@@ -24,9 +24,10 @@ breakdown.
   and counts down planks.
 - **AI debrief with Claude** (optional): after the set, the server turns your numbers into two or three
   spoken sentences of coaching. Without an API key the app uses its on-device summary.
-- **Installable PWA**: the whole app is saved on the first visit so it opens offline (the body-tracking
-  model is saved the first time you start a set), keeps the screen awake during a set, history of your
-  sets. A warm, editorial look: cream and espresso with bronze accents, Bebas Neue headlines and Inter
+- **Free, supported by ads** (Google AdSense), with a real website around the app: step-by-step form
+  guides for every exercise, about, privacy policy and terms pages ([set up ads](#ads-google-adsense)).
+- **Works offline**: the whole app is saved on the first visit (the body-tracking model the first time
+  you start a set), keeps the screen awake during a set, history of your sets. A warm, editorial look: cream and espresso with bronze accents, Bebas Neue headlines and Inter
   text (both bundled, SIL Open Font License, see `src/assets/fonts`).
 - **AI people, not stick figures**: exercise photos and camera-free demo videos of photorealistic
   **AI-generated people who don't exist**. The demo runs the real tracking on the video, exactly like
@@ -71,24 +72,7 @@ npm run dev:https        # self-signed HTTPS on your LAN, e.g. https://192.168.1
 ```
 
 Accept the certificate warning on the phone, prop it up 2–3 m away, turn the volume up and go. For
-day-to-day use, deploy it (below) and **Add to Home Screen** — it runs full-screen like a native app.
-
-## Install on your phone
-
-TRACK AI installs straight from the website as a home-screen app (a PWA): its own icon, full
-screen, works offline, no app store and no account. The **Install on iPhone** and **Install on
-Android** buttons on the home page handle it:
-
-- **Android** (Chrome, Edge, Samsung Internet): one tap opens the phone's own install prompt; if the
-  browser doesn't offer one, a short guide shows the ⋮ → *Install app* steps.
-- **iPhone / iPad**: Apple doesn't allow a one-tap install for web apps, so the button opens a
-  3-step guide: Share → *Add to Home Screen* → *Add*.
-- **On a computer**: a QR code opens the site on the phone. In-app browsers (Instagram, Facebook…)
-  can't install apps, so people there are told to open the page in Safari or Chrome first.
-
-The app must be served over HTTPS for this (every host below does it). If you later publish store
-versions, set `VITE_APP_STORE_URL` and `VITE_PLAY_STORE_URL` at build time and the same buttons
-link to the App Store and Google Play instead.
+day-to-day use, deploy it (below).
 
 ## AI people
 
@@ -115,39 +99,45 @@ show a plain tile and the demo button is hidden.
 ## Put it online (Vercel)
 
 Import the repository at vercel.com (**Add New → Project**) and click **Deploy**.
-[`vercel.json`](vercel.json) already holds the settings (Vite, `dist`, the pose models bundled, unknown
-addresses open the app, security headers), and every push redeploys. The site gets HTTPS, so the camera
-and **Add to Home Screen** work.
+[`vercel.json`](vercel.json) already holds the settings (Vite, `dist`, the pose models bundled, clean
+page addresses like `/privacy`, unknown addresses open the app, security headers), and every push
+redeploys. The site gets HTTPS, so the camera works.
 
-Vercel serves the app plus one small function, [`api/license.ts`](api/license.ts) (the subscription
-check below), but not the AI debrief server, so that build turns the AI debrief off
-(`VITE_AI_DEBRIEF=off`) and every set gets the on-device summary. For AI debriefs, run the server below
-and point the site at it with `VITE_COACH_API_URL` instead.
+Vercel only hosts files, so that build turns the AI debrief off (`VITE_AI_DEBRIEF=off`) and every set
+gets the on-device summary. For AI debriefs, run the server below and point the site at it with
+`VITE_COACH_API_URL` instead.
 
-## Paid plan (Lemon Squeezy)
+## The website pages
 
-The first 3 workouts are free; after that the coach needs a subscription, sold through
-[Lemon Squeezy](https://www.lemonsqueezy.com) (it handles checkout, taxes and receipts). Buyers get a
-**license key** by email and enter it in the app, which asks `/api/license` to check it with Lemon
-Squeezy's license API (no secret key needed). The key is re-checked about once a day, the app keeps
-working offline for up to two weeks in between, and a cancelled or refunded subscription locks it again.
-Settings shows the plan, links to Lemon Squeezy's customer portal to cancel or change the card, and
-frees the device for another phone. Demos stay free.
+`npm run build` also writes plain HTML pages next to the app (from [`src/site`](src/site)), so they load
+instantly and search engines and AdSense's reviewers can read them without running the app:
 
-1. In Lemon Squeezy, create a **subscription** product (e.g. $14.99 every month) and turn on
-   **license keys** (choose how many devices one key may unlock).
-2. Set these variables in Vercel (**Settings → Environment Variables**), then redeploy:
+- `/guides` and a form guide per exercise (`/guides/squat`, …): steps, the mistakes the coach checks
+  (taken from its own rules), sets and reps, easier and harder versions, safety, and a button that
+  opens the coach on that exercise
+- `/about`, `/privacy` (camera, local storage, Google's advertising cookies and opt-outs), `/terms`
+  (health notice, no warranty) and `/contact` (only when `VITE_CONTACT_EMAIL` is set)
+- `/robots.txt`, `/sitemap.xml` (with a known address) and `/ads.txt` (with AdSense)
+
+The privacy policy and terms are a solid starting point, not legal advice: read them and adapt them to
+you. The home page footer links to all of them; the dev server serves them too.
+
+## Ads (Google AdSense)
+
+The app is free and earns from display ads. Nothing shows until you add your AdSense details:
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `VITE_CHECKOUT_URL` | `https://yourstore.lemonsqueezy.com/buy/…` | The product's checkout link; turns the paywall on |
-| `LEMONSQUEEZY_STORE_ID` | `12345` | Your store's id: keys from other stores are refused |
-| `LEMONSQUEEZY_PRODUCT_ID` | `67890` | The product's id: keys for other products are refused |
-| `VITE_PRICE` | `$14.99` | Optional: the price shown in the app (default `$14.99`) |
+| `VITE_ADSENSE_CLIENT` | `ca-pub-1234567890123456` | Your publisher id: adds AdSense's code to every page, `/ads.txt` and the site-ownership tag |
+| `VITE_ADSENSE_SLOT` | `9876543210` | A responsive display ad unit, shown on the home page, after a set, in History and on the website pages |
+| `SITE_URL` | `https://trackai.fit` | The site's address, for the sitemap and canonical links (on Vercel the production address is used when unset) |
+| `VITE_CONTACT_EMAIL` | `hello@trackai.fit` | Adds the contact page (AdSense's reviewers look for one) |
 
-Without `VITE_CHECKOUT_URL` there is no paywall at all. The check runs in the browser, like any app that
-works offline, so it stops ordinary users, not a determined developer; keep the repository private so the
-code isn't one click away.
+Ads never appear on the workout screen or on empty pages. Leave AdSense's **Auto ads** off (or at least
+its anchor and vignette formats): they could cover the workout screen, and they insert ads into the
+app's own screens. AdSense needs a site on your own domain (not `*.vercel.app`), because `ads.txt` must
+sit at the domain's root. With ads on, the Content-Security-Policy also allows Google's ad servers; the
+AdSense consent message (set up in AdSense under **Privacy & messaging**) covers visitors in Europe.
 
 ## Production: app + AI debrief server
 
@@ -176,7 +166,7 @@ API with `VITE_COACH_API_URL` + `ALLOWED_ORIGINS` (see [`.env.example`](.env.exa
 | `DEBRIEFS_PER_MINUTE` | `12` | Per-IP rate limit |
 | `VITE_COACH_API_URL` | same origin | (build time) where the frontend finds the API |
 | `VITE_AI_DEBRIEF` | on | (build time) `off` hides the AI debrief, for hosting without the server |
-| `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_PRODUCT_ID` | – | The subscription that unlocks the app (see [Paid plan](#paid-plan-lemon-squeezy)) |
+| `VITE_ADSENSE_CLIENT`, `VITE_ADSENSE_SLOT`, `SITE_URL`, `VITE_CONTACT_EMAIL` | – | Ads and the website pages (see [Ads](#ads-google-adsense)) |
 
 **What the AI sees:** only the set's numbers (exercise, reps, form score, which faults happened how
 often) — never images. The server accepts only known exercise names and fault titles and substitutes its

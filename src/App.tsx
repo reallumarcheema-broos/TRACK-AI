@@ -6,15 +6,12 @@ import { WebAudioSfx } from './coach/sfx';
 import { NullEngine, Priority, VoiceQueue, WebSpeechEngine } from './coach/voice';
 import { EXERCISE_BY_ID } from './exercises';
 import { hasDemo } from './media/people';
-import { canStartWorkout, recordWorkout, refreshLicense, useAccess } from './pay/license';
 import { addHistory, entryFromResult } from './state/history';
 import { useSettings } from './state/settings';
 import { History } from './ui/History';
 import { Home } from './ui/Home';
-import { Paywall, type PaywallStart } from './ui/Paywall';
 import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
-import { useSheet } from './ui/Sheet';
 import { Summary } from './ui/Summary';
 
 type Route =
@@ -97,7 +94,7 @@ function initialRoutes(): Route[] {
     return hasDemo(demo) ? [...setup, { name: 'workout', id: demo, demo: true, key: 0 }] : setup;
   }
   if (ex && ex in EXERCISE_BY_ID) return [{ name: 'home' }, { name: 'setup', id: ex }];
-  // Home-screen shortcut (see manifest.webmanifest).
+  // Deep link straight to the history screen.
   if (params.get('view') === 'history') return [{ name: 'home' }, { name: 'history' }];
   return [{ name: 'home' }];
 }
@@ -150,18 +147,6 @@ export function App() {
   useEffect(() => window.scrollTo(0, 0), [route]);
   const { Workout, failed: workoutFailed } = useWorkoutScreen(route.name === 'setup' || route.name === 'workout' || route.name === 'summary');
 
-  // Paid plan: a few free workouts, then a subscription (see pay/license.ts).
-  const access = useAccess();
-  const paywall = useSheet<PaywallStart>();
-  const openPaywall = paywall.open;
-  useEffect(() => {
-    // Confirm the subscription about once a day, including when the app comes back to the front.
-    void refreshLicense();
-    const onVisible = () => document.visibilityState === 'visible' && void refreshLicense();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, []);
-
   const unlockAudio = () => {
     services.engine.unlock();
     services.sfx.unlock();
@@ -169,110 +154,88 @@ export function App() {
 
   const targetFor = (id: ExerciseId) => settings.targets[id] ?? EXERCISE_BY_ID[id].defaultTarget;
 
-  const screen = (() => {
-    switch (route.name) {
-      case 'home':
-        return (
-          <Home
-            onPick={(id) => push({ name: 'setup', id })}
-            onHistory={() => push({ name: 'history' })}
-            onSettings={() => push({ name: 'settings' })}
-            onPaywall={openPaywall}
-          />
-        );
+  switch (route.name) {
+    case 'home':
+      return <Home onPick={(id) => push({ name: 'setup', id })} onHistory={() => push({ name: 'history' })} onSettings={() => push({ name: 'settings' })} />;
 
-      case 'setup': {
-        const ex = EXERCISE_BY_ID[route.id];
-        return (
-          <Setup
-            exercise={ex}
-            target={targetFor(route.id)}
-            facingMode={settings.facingMode}
-            onTarget={(n) => updateSettings({ targets: { ...settings.targets, [route.id]: n } })}
-            onFacing={(facingMode) => updateSettings({ facingMode })}
-            onUnlock={() => openPaywall('offer')}
-            onStart={(demo) => {
-              unlockAudio();
-              push({ name: 'workout', id: route.id, demo, key: Date.now() });
-            }}
-            onBack={back}
-          />
-        );
-      }
-
-      case 'workout': {
-        if (!Workout) return <WorkoutPending failed={workoutFailed} demo={route.demo} onBack={back} />;
-        const target = targetFor(route.id);
-        return (
-          <Workout
-            key={route.key}
-            exercise={EXERCISE_BY_ID[route.id]}
-            target={target > 0 ? target : null}
-            demo={route.demo}
-            settings={settings}
-            voice={services.voice}
-            sfx={services.sfx}
-            onToggleVoice={() => updateSettings({ voice: !settings.voice })}
-            onExit={back}
-            onDemoInstead={hasDemo(route.id) ? () => replace({ name: 'workout', id: route.id, demo: true, key: Date.now() }) : undefined}
-            onFinish={(result, demo) => {
-              const entry = entryFromResult(result, demo);
-              const didSomething = result.reps.length > 0 || result.partialReps.length > 0 || result.holdMs > 3000;
-              if (didSomething) {
-                addHistory(entry);
-                if (!demo) recordWorkout();
-              }
-              replace({ name: 'summary', id: route.id, result, entryId: entry.id, demo });
-            }}
-          />
-        );
-      }
-
-      case 'summary':
-        return (
-          <Summary
-            result={route.result}
-            entryId={route.entryId}
-            aiDebrief={settings.aiDebrief && AI_DEBRIEF_ENABLED}
-            voice={services.voice}
-            onAgain={() => {
-              if (!route.demo && !canStartWorkout(access)) return openPaywall('offer');
-              unlockAudio();
-              replace({ name: 'workout', id: route.id, demo: route.demo, key: Date.now() });
-            }}
-            onHome={home}
-            onHistory={() => push({ name: 'history' })}
-          />
-        );
-
-      case 'history':
-        return <History onBack={back} />;
-
-      case 'settings':
-        return (
-          <Settings
-            settings={settings}
-            onChange={updateSettings}
-            onPaywall={openPaywall}
-            onBack={back}
-            onTestVoice={() => {
-              unlockAudio();
-              services.voice.muted = false;
-              services.voice.speak("Hi! I'm your TRACK AI coach. Knees out, chest up — let's get to work!", {
-                priority: Priority.urgent,
-                interrupt: true,
-              });
-              services.voice.muted = !settings.voice;
-            }}
-          />
-        );
+    case 'setup': {
+      const ex = EXERCISE_BY_ID[route.id];
+      return (
+        <Setup
+          exercise={ex}
+          target={targetFor(route.id)}
+          facingMode={settings.facingMode}
+          onTarget={(n) => updateSettings({ targets: { ...settings.targets, [route.id]: n } })}
+          onFacing={(facingMode) => updateSettings({ facingMode })}
+          onStart={(demo) => {
+            unlockAudio();
+            push({ name: 'workout', id: route.id, demo, key: Date.now() });
+          }}
+          onBack={back}
+        />
+      );
     }
-  })();
 
-  return (
-    <>
-      {screen}
-      {paywall.value && <Paywall start={paywall.value} onClose={paywall.close} />}
-    </>
-  );
+    case 'workout': {
+      if (!Workout) return <WorkoutPending failed={workoutFailed} demo={route.demo} onBack={back} />;
+      const target = targetFor(route.id);
+      return (
+        <Workout
+          key={route.key}
+          exercise={EXERCISE_BY_ID[route.id]}
+          target={target > 0 ? target : null}
+          demo={route.demo}
+          settings={settings}
+          voice={services.voice}
+          sfx={services.sfx}
+          onToggleVoice={() => updateSettings({ voice: !settings.voice })}
+          onExit={back}
+          onDemoInstead={hasDemo(route.id) ? () => replace({ name: 'workout', id: route.id, demo: true, key: Date.now() }) : undefined}
+          onFinish={(result, demo) => {
+            const entry = entryFromResult(result, demo);
+            const didSomething = result.reps.length > 0 || result.partialReps.length > 0 || result.holdMs > 3000;
+            if (didSomething) addHistory(entry);
+            replace({ name: 'summary', id: route.id, result, entryId: entry.id, demo });
+          }}
+        />
+      );
+    }
+
+    case 'summary':
+      return (
+        <Summary
+          result={route.result}
+          entryId={route.entryId}
+          aiDebrief={settings.aiDebrief && AI_DEBRIEF_ENABLED}
+          voice={services.voice}
+          onAgain={() => {
+            unlockAudio();
+            replace({ name: 'workout', id: route.id, demo: route.demo, key: Date.now() });
+          }}
+          onHome={home}
+          onHistory={() => push({ name: 'history' })}
+        />
+      );
+
+    case 'history':
+      return <History onBack={back} />;
+
+    case 'settings':
+      return (
+        <Settings
+          settings={settings}
+          onChange={updateSettings}
+          onBack={back}
+          onTestVoice={() => {
+            unlockAudio();
+            services.voice.muted = false;
+            services.voice.speak("Hi! I'm your TRACK AI coach. Knees out, chest up — let's get to work!", {
+              priority: Priority.urgent,
+              interrupt: true,
+            });
+            services.voice.muted = !settings.voice;
+          }}
+        />
+      );
+  }
 }

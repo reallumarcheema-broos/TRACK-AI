@@ -2,13 +2,11 @@ import { useMemo, type ReactNode } from 'react';
 import type { ExerciseId } from '../core/exercise';
 import { EXERCISES } from '../exercises';
 import { hasAiPeople, heroPhoto } from '../media/people';
-import { FREE_WORKOUTS, PAYMENTS_ON, PRICE, useAccess } from '../pay/license';
-import { detectPlatform, isStandalone } from '../pwa/install';
 import { loadHistory } from '../state/history';
+import { siteLinks } from '../site/site';
+import { Ad } from './Ad';
 import { ExerciseArt } from './ExerciseArt';
-import { GetAppButtons, QrCode } from './GetApp';
-import { IconChart, IconCheck, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
-import { PriceBlock, type PaywallStart } from './Paywall';
+import { IconChart, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
 
 const VIEW_LABEL = { side: 'Side-on', front: 'Facing camera', diagonal: 'Angled' } as const;
 
@@ -27,6 +25,10 @@ const STEPS = [
 
 /** An example trend for people who haven't trained yet (labelled as an example). */
 const EXAMPLE_SCORES = [58, 64, 61, 70, 74, 72, 79, 82];
+
+const BASE = import.meta.env.BASE_URL;
+/** The contact page only exists when there's an address to show on it. */
+const LINKS = siteLinks(Boolean((import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.includes('@')));
 
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -67,52 +69,8 @@ function useScoreTrend(): { scores: number[]; example: boolean } {
   }, []);
 }
 
-/** "Try it free, then $14.99 a month" — only when payments are set up. */
-function Pricing({ onPaywall }: { onPaywall: (start: PaywallStart) => void }) {
-  const access = useAccess();
-  return (
-    <section id="pricing" className="section pricing" aria-labelledby="pricing-title">
-      <div className="pricing-copy">
-        <span className="eyebrow">Pricing</span>
-        <h2 id="pricing-title">
-          Try it free. Then {PRICE} a month.
-        </h2>
-        <p>
-          Your first {FREE_WORKOUTS} workouts are free: no card, no account. After that, TRACK AI Pro is {PRICE} a month, and you can
-          cancel anytime.
-        </p>
-      </div>
-      <div className="price-card">
-        <span className="k">TRACK AI Pro</span>
-        <PriceBlock />
-        {access.kind === 'subscribed' ? (
-          <p className="subscribed">
-            <IconCheck /> You're subscribed on this device
-          </p>
-        ) : (
-          <div className="price-actions">
-            <button className="btn primary" onClick={() => scrollTo('exercises')}>
-              Start free
-            </button>
-            <button className="btn ghost" onClick={() => onPaywall('key')}>
-              I have a license key
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-export function Home(props: {
-  onPick: (id: ExerciseId) => void;
-  onHistory: () => void;
-  onSettings: () => void;
-  onPaywall: (start: PaywallStart) => void;
-}) {
+export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () => void; onSettings: () => void }) {
   const hero = heroPhoto();
-  const standalone = isStandalone();
-  const desktop = detectPlatform(navigator.userAgent, navigator.maxTouchPoints) === 'desktop';
   const trend = useScoreTrend();
   const latest = trend.scores[trend.scores.length - 1];
   const change = latest - trend.scores[0];
@@ -129,15 +87,10 @@ export function Home(props: {
         <nav className="nav-links" aria-label="Sections">
           <button onClick={() => scrollTo('exercises')}>Exercises</button>
           <button onClick={() => scrollTo('how')}>How it works</button>
-          {PAYMENTS_ON && <button onClick={() => scrollTo('pricing')}>Pricing</button>}
+          <a href={`${BASE}guides`}>Guides</a>
           <button onClick={() => scrollTo('privacy')}>Privacy</button>
         </nav>
         <span className="spacer" />
-        {!standalone && (
-          <button className="btn get-app-top" onClick={() => scrollTo('get-app')}>
-            Get the app
-          </button>
-        )}
         <button className="icon-btn" onClick={props.onHistory} aria-label="History">
           <IconHistory />
         </button>
@@ -167,7 +120,6 @@ export function Home(props: {
               See how it works
             </button>
           </div>
-          <GetAppButtons />
         </div>
 
         <div className="hero-visual">
@@ -245,6 +197,8 @@ export function Home(props: {
         </ol>
       </section>
 
+      <Ad />
+
       <section className="section every-body" aria-labelledby="every-body">
         <div className="every-copy">
           <span className="eyebrow">Built for every body</span>
@@ -264,34 +218,19 @@ export function Home(props: {
         </div>
       </section>
 
-      {PAYMENTS_ON && <Pricing onPaywall={props.onPaywall} />}
-
-      {!standalone && (
-        <section id="get-app" className="section get-app" aria-labelledby="get-app-title">
-          <div className="get-app-copy">
-            <span className="eyebrow">Get the app</span>
-            <h2 id="get-app-title">Your coach, one tap away.</h2>
-            <p>
-              Install TRACK AI on your phone: its own icon on your home screen, full screen, and it works offline.
-              {PAYMENTS_ON ? ' No app store and no account needed.' : ' Free, with no app store and no account.'}
-            </p>
-            <GetAppButtons />
-          </div>
-          {desktop && (
-            <div className="qr-card">
-              <QrCode value={`${location.origin}${import.meta.env.BASE_URL}`} />
-              <span>Scan with your phone’s camera</span>
-            </div>
-          )}
-        </section>
-      )}
-
       <footer id="privacy" className="foot">
         <p className="note">
           <IconLock />
           Private by design: your camera feed is analysed on this device and never uploaded.
         </p>
         {hasAiPeople && <p className="note">The people in the pictures and demos are AI-generated. They don't exist.</p>}
+        <nav className="foot-links" aria-label="Site">
+          {LINKS.map((l) => (
+            <a key={l.href} href={`${BASE}${l.href}`}>
+              {l.label}
+            </a>
+          ))}
+        </nav>
       </footer>
     </main>
   );

@@ -4,6 +4,7 @@ import { fetchDebrief } from '../coach/debrief';
 import { describeSet, toDebriefRequest } from '../coach/summary';
 import { Priority, type VoiceQueue } from '../coach/voice';
 import { previousSets, updateHistory } from '../state/history';
+import { Ad } from './Ad';
 import { ExerciseArt } from './ExerciseArt';
 import { IconCoach, IconHistory, IconRepeat, IconSound } from './icons';
 
@@ -152,6 +153,8 @@ export function Summary({ result, entryId, aiDebrief, voice, onAgain, onHome, on
           </div>
         </section>
       )}
+
+      <Ad />
 
       {result.faults.length > 0 && (
         <section className="card stack">

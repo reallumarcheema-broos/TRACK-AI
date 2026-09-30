@@ -94,6 +94,9 @@ describe('static hosting', () => {
     mkdirSync(path.join(dir, 'mediapipe/wasm'), { recursive: true });
     writeFileSync(path.join(dir, 'index.html'), '<!doctype html><title>TRACK</title>');
     writeFileSync(path.join(dir, 'assets/app-abc123.js'), 'console.log(1)');
+    mkdirSync(path.join(dir, 'guides'));
+    writeFileSync(path.join(dir, 'privacy.html'), '<h1>Privacy policy</h1>');
+    writeFileSync(path.join(dir, 'guides/squat.html'), '<h1>How to do a squat</h1>');
     const wasm = Buffer.alloc(10_000, 7);
     writeFileSync(path.join(dir, 'mediapipe/wasm/vision.wasm'), wasm);
     writeFileSync(path.join(dir, 'mediapipe/wasm/vision.wasm.gz'), gzipSync(wasm));
@@ -115,6 +118,12 @@ describe('static hosting', () => {
     const base = await start({ distDir: dist() });
     expect(await (await fetch(`${base}/history`)).text()).toContain('TRACK');
     expect((await fetch(`${base}/assets/missing.js`)).status).toBe(404);
+  });
+
+  it('serves the content pages without .html, like Vercel', async () => {
+    const base = await start({ distDir: dist() });
+    expect(await (await fetch(`${base}/privacy`)).text()).toContain('Privacy policy');
+    expect(await (await fetch(`${base}/guides/squat`)).text()).toContain('How to do a squat');
   });
 
   it('serves the pre-compressed WASM runtime', async () => {

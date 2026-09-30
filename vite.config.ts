@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { ADSENSE_CONNECT_SRC, adsenseHead, SITE_NAME, siteConfig, type SiteConfig } from './src/site/site.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const MEDIAPIPE_WASM_DIR = path.join(root, 'node_modules/@mediapipe/tasks-vision/wasm');
@@ -97,11 +98,12 @@ function serviceWorkerPrecache(): Plugin {
       const files: string[] = [];
       for (const [name, out] of Object.entries(bundle).sort(([a], [b]) => a.localeCompare(b))) {
         hash.update(name).update(out.type === 'chunk' ? out.code : out.source);
-        // index.html is cached as './'; videos stream in ranges, which the Cache API can't store.
-        if (name !== 'index.html' && !/\.(map|mp4|webm)$/.test(name)) files.push(name);
+        // index.html is cached as './', the content pages as they're visited; videos stream in
+        // ranges, which the Cache API can't store.
+        if (!/\.(html|txt|xml|map|mp4|webm)$/.test(name)) files.push(name);
       }
       const icons = (await readdir(path.join(publicDir, 'icons'))).map((f) => `icons/${f}`);
-      for (const name of ['manifest.webmanifest', ...icons]) {
+      for (const name of icons) {
         hash.update(name).update(await readFile(path.join(publicDir, name)));
         files.push(name);
       }
@@ -121,13 +123,16 @@ function serviceWorkerPrecache(): Plugin {
 }
 
 /**
- * Production Content-Security-Policy: the page may only talk to itself, Google's model CDN and
- * the optional debrief API. Besides hardening, this stops MediaPipe's built-in usage-metrics
- * logger (odml.pa.googleapis.com) — the app promises that everything stays on the device.
+ * Production Content-Security-Policy: the page may only talk to itself, Google's model CDN, the
+ * optional debrief API and, with ads on, Google AdSense. Besides hardening, this stops MediaPipe's
+ * built-in usage-metrics logger (odml.pa.googleapis.com) — the app promises that everything stays
+ * on the device.
  */
-function contentSecurityPolicy(apiUrl: string | undefined): Plugin {
+function contentSecurityPolicy(apiUrl: string | undefined, ads: boolean): Plugin {
   const api = apiUrl ? new URL(apiUrl).origin : '';
-  const csp = `connect-src 'self' blob: data: https://storage.googleapis.com ${api}`.trim();
+  const csp = ["connect-src 'self' blob: data: https://storage.googleapis.com", api, ...(ads ? ADSENSE_CONNECT_SRC : [])]
+    .filter(Boolean)
+    .join(' ');
   return {
     name: 'track-ai:csp',
     apply: 'build',
@@ -137,29 +142,85 @@ function contentSecurityPolicy(apiUrl: string | undefined): Plugin {
   };
 }
 
+/**
+ * The public website around the app: Google AdSense's code and share tags in index.html, and in
+ * development the content pages, robots.txt, ads.txt and sitemap.xml (a production build writes
+ * those with scripts/build-site.ts). Configured through the environment, see .env.example.
+ */
+function website(config: SiteConfig): Plugin {
+  let base = '/';
+  return {
+    name: 'track-ai:website',
+    configResolved(c) {
+      base = c.base;
+    },
+    transformIndexHtml(html) {
+      const url = config.siteUrl ? `${config.siteUrl}${base}` : null;
+      const head = [
+        url && `<link rel="canonical" href="${url}" />`,
+        url && `<meta property="og:url" content="${url}" />`,
+        '<meta property="og:type" content="website" />',
+        `<meta property="og:site_name" content="${SITE_NAME}" />`,
+        `<meta property="og:title" content="${SITE_NAME}: your AI trainer" />`,
+        '<meta property="og:description" content="Prop up your phone and train with a free AI coach: real-time rep counting, form checks and voice coaching." />',
+        config.adsenseClient && adsenseHead(config.adsenseClient),
+      ].filter(Boolean);
+      return html.replace('</head>', `    ${head.join('\n    ')}\n  </head>`);
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const wanted = decodeURIComponent((req.url ?? '/').split('?')[0])
+          .slice(base.length)
+          .replace(/\/$/, '');
+        // Loaded through Vite so the page code can import the app's exercise definitions.
+        server
+          .ssrLoadModule('/src/site/files.ts')
+          .then((mod) => {
+            const { siteFiles } = mod as typeof import('./src/site/files');
+            const assets = {
+              base,
+              stylesheets: [`${base}src/styles.css`],
+              fonts: [`${base}src/assets/fonts/bebas-neue-latin.woff2`, `${base}src/assets/fonts/inter-latin.woff2`],
+            };
+            const hit = siteFiles(config, assets, new Date().toISOString().slice(0, 10)).find((f) => f.path === wanted);
+            if (!hit) return next();
+            res.setHeader('Content-Type', hit.type);
+            res.end(hit.body);
+          })
+          .catch(next);
+      });
+    },
+  };
+}
+
 // `npm run dev:https` → self-signed HTTPS on the LAN so a phone can open the camera
 // (getUserMedia needs a secure context).
-export default defineConfig(({ mode }) => ({
-  plugins: [
-    react(),
-    mediapipeWasm(),
-    contentSecurityPolicy(loadEnv(mode, root, 'VITE_').VITE_COACH_API_URL),
-    serviceWorkerPrecache(),
-    precompress(),
-    mode === 'https' ? basicSsl() : null,
-  ],
-  server: {
-    host: mode === 'https' ? true : undefined,
-    proxy: {
-      '/api': { target: 'http://localhost:8787', changeOrigin: true },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, root, '');
+  const site = siteConfig(env);
+  return {
+    plugins: [
+      react(),
+      mediapipeWasm(),
+      contentSecurityPolicy(env.VITE_COACH_API_URL, site.adsenseClient !== null),
+      website(site),
+      serviceWorkerPrecache(),
+      precompress(),
+      mode === 'https' ? basicSsl() : null,
+    ],
+    server: {
+      host: mode === 'https' ? true : undefined,
+      proxy: {
+        '/api': { target: 'http://localhost:8787', changeOrigin: true },
+      },
     },
-  },
-  build: {
-    target: 'es2022',
-    sourcemap: true,
-  },
-  test: {
-    include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
-    environment: 'node',
-  },
-}));
+    build: {
+      target: 'es2022',
+      sourcemap: true,
+    },
+    test: {
+      include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
+      environment: 'node',
+    },
+  };
+});

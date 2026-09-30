@@ -8,11 +8,12 @@
     "types": ["node"],
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "server", "api", "scripts/**/*.ts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "server", "scripts/**/*.ts"]
 }

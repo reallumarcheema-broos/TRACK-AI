@@ -32,35 +32,7 @@ test('a demo set is tracked, coached and summarised', async ({ page }) => {
   await expect(page.locator('.list-item').first()).toContainText('Jumping Jacks');
 });
 
-test('Install on iPhone explains Add to Home Screen', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Install on iPhone' }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Install on iPhone' });
-  await expect(sheet).toContainText('Add to Home Screen');
-  await page.keyboard.press('Escape');
-  await expect(sheet).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Install on Android' }).first()).toBeVisible();
-});
-
-test('the install sheet behaves like a phone popup', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Install on iPhone' }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Install on iPhone' });
-  await expect(sheet.getByRole('button', { name: 'Close' })).toBeFocused();
-  // Keyboard focus cycles inside the sheet and the page behind it doesn't scroll.
-  for (let i = 0; i < 4; i++) {
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-  }
-  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden');
-  // The phone's back gesture closes the sheet and stays on the page.
-  await page.goBack();
-  await expect(sheet).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
-  expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).not.toBe('hidden');
-});
-
-test('home-screen shortcuts open the right screen', async ({ page }) => {
+test('links open the right screen', async ({ page }) => {
   await page.goto('/?view=history');
   await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
   await page.goto('/?exercise=plank');
@@ -84,4 +56,37 @@ test('the browser back button walks back through screens', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Squat' })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
+});
+
+test('the website pages are linked from the app', async ({ page }) => {
+  await page.goto('/');
+  const site = page.getByRole('navigation', { name: 'Site' });
+  for (const [link, heading] of [
+    ['Exercise guides', /Move well/i],
+    ['About', /An AI trainer in your phone/i],
+    ['Privacy policy', /Privacy policy/i],
+    ['Terms of use', /Terms of use/i],
+  ] as const) {
+    await page.goto('/');
+    await site.getByRole('link', { name: link }).click();
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+  }
+  // Every guide links back into the coach.
+  await page.goto('/guides');
+  await page.getByRole('link', { name: 'How to do a squat' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'How to do a squat' })).toBeVisible();
+  await expect(page.getByText('Knees caving in.')).toBeVisible();
+  await page.getByRole('link', { name: 'Start a squat set' }).click();
+  await expect(page.getByRole('heading', { name: 'Squat' })).toBeVisible();
+  // …and each setup screen links to its guide.
+  await page.getByText('Tips for accurate tracking').click();
+  await page.getByRole('link', { name: /full squat form guide/ }).click();
+  await expect(page).toHaveURL(/\/guides\/squat$/);
+});
+
+test('the privacy policy explains Google ads and cookies', async ({ page }) => {
+  await page.goto('/privacy');
+  await expect(page.getByText('Third-party vendors, including Google, use cookies')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ads Settings' })).toHaveAttribute('href', 'https://adssettings.google.com');
+  expect((await page.request.get('/robots.txt')).ok()).toBe(true);
 });
