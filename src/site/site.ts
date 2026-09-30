@@ -5,6 +5,10 @@
  */
 
 export const SITE_NAME = 'TRACK AI Coach';
+/** When the website pages were first published (ISO date). */
+export const SITE_LAUNCH = '2026-09-30';
+/** The picture shown when a page is shared (public/og-image.png, 1200×630). */
+export const OG_IMAGE = 'og-image.png';
 
 /** A Google AdSense publisher id as "ca-pub-…" (accepts "pub-…" too); null when missing or malformed. */
 export function adsenseClient(raw: string | undefined): string | null {
@@ -20,6 +24,12 @@ export function adSlot(raw: string | undefined): string | null {
   return v && /^\d{5,20}$/.test(v) ? v : null;
 }
 
+/** Google Search Console's "HTML tag" code (the tag's content value); null when missing or malformed. */
+export function siteVerification(raw: string | undefined): string | null {
+  const v = raw?.trim();
+  return v && /^[A-Za-z0-9_-]{10,100}$/.test(v) ? v : null;
+}
+
 export function contactEmail(raw: string | undefined): string | null {
   const v = raw?.trim();
   return v && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(v) ? v : null;
@@ -33,6 +43,7 @@ export interface SiteConfig {
   contactEmail: string | null;
   /** The optional AI debrief (a TRACK AI server) is on; the privacy policy then explains it. */
   aiDebrief: boolean;
+  googleSiteVerification: string | null;
 }
 
 /**
@@ -53,6 +64,7 @@ export function siteConfig(env: Record<string, string | undefined>): SiteConfig 
     adSlot: adSlot(env.VITE_ADSENSE_SLOT),
     contactEmail: contactEmail(env.VITE_CONTACT_EMAIL),
     aiDebrief: env.VITE_AI_DEBRIEF !== 'off',
+    googleSiteVerification: siteVerification(env.GOOGLE_SITE_VERIFICATION),
   };
 }
 
@@ -78,6 +90,7 @@ export const ADSENSE_CONNECT_SRC = [
 export function siteLinks(hasContact: boolean): { href: string; label: string }[] {
   return [
     { href: 'guides', label: 'Exercise guides' },
+    { href: 'articles', label: 'Articles' },
     { href: 'about', label: 'About' },
     { href: 'privacy', label: 'Privacy policy' },
     { href: 'terms', label: 'Terms of use' },

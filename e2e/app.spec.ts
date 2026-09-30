@@ -84,6 +84,26 @@ test('the website pages are linked from the app', async ({ page }) => {
   await expect(page).toHaveURL(/\/guides\/squat$/);
 });
 
+test('the articles are linked from the home page and lead back to the coach', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: /Knees caving in when you squat/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Knees caving in when you squat? How to fix it' })).toBeVisible();
+  await expect(page.getByText(/min read/)).toBeVisible();
+  // Articles link to the form guides…
+  await page.getByRole('link', { name: 'squat form guide' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'How to do a squat' })).toBeVisible();
+  // …the guides link back to the articles about them…
+  await expect(page.getByRole('link', { name: 'Knees caving in when you squat? How to fix it' })).toBeVisible();
+  // …and the index lists them all.
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Articles' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Train smarter' })).toBeVisible();
+  await expect(page.locator('.doc-card')).toHaveCount(14);
+  await page.getByRole('link', { name: /beginner full-body workout/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /beginner full-body workout/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Open the coach' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /Your AI trainer/ })).toBeVisible();
+});
+
 test('the privacy policy explains Google ads and cookies', async ({ page }) => {
   await page.goto('/privacy');
   await expect(page.getByText('Third-party vendors, including Google, use cookies')).toBeVisible();

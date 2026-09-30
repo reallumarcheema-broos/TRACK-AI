@@ -1,13 +1,14 @@
 /**
- * The website's content pages (exercise guides, about, privacy, terms, contact) as plain HTML, so
- * they load instantly and search engines and Google AdSense's reviewers can read them without
- * running the app. Built by vite.config.ts; served at /guides, /privacy… (Vercel's cleanUrls, and
- * the Node server does the same).
+ * The website's content pages (exercise guides, articles, about, privacy, terms, contact) as plain
+ * HTML, so they load instantly and search engines and Google AdSense's reviewers can read them
+ * without running the app. Written by scripts/build-site.ts; served at /guides, /privacy…
+ * (Vercel's cleanUrls, and the Node server does the same).
  */
 import { exerciseCues, type ExerciseDef } from '../core/exercise';
 import { EXERCISES } from '../exercises';
+import { ARTICLES, type Article, type Block } from './articles';
 import { GUIDES } from './guides';
-import { adsenseHead, SITE_NAME, siteLinks, type SiteConfig } from './site';
+import { adsenseHead, OG_IMAGE, SITE_LAUNCH, SITE_NAME, siteLinks, type SiteConfig } from './site';
 
 export interface PageAssets {
   /** The site's base path, e.g. "/". */
@@ -29,6 +30,25 @@ export const POLICY_DATE = '30 September 2026';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** Article text: **bold** and [links](/path) to the site's own pages. */
+function inline(text: string, base: string): string {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\[([^\]]+)\]\(\/([^)]*)\)/g, (_, label: string, path: string) => `<a href="${base}${path}">${label}</a>`);
+}
+
+const longDate = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+interface PageSpec {
+  path: string;
+  title: string;
+  description: string;
+  body: string;
+  /** Guides and articles are marked up as articles for search engines. */
+  published?: string;
+}
+
 const LOGO =
   '<svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#17120e" />' +
   '<path d="M16 46L28 20L48 38" fill="none" stroke="#d8a066" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />' +
@@ -45,9 +65,29 @@ function adUnit(config: SiteConfig): string {
   );
 }
 
-function layout(page: { path: string; title: string; description: string; body: string }, config: SiteConfig, assets: PageAssets): string {
+/** Structured data so search engines understand an article (JSON inside a script tag). */
+function articleData(page: PageSpec, url: string | null, image: string | null, home: string | null): string {
+  const org = { '@type': 'Organization', name: SITE_NAME, ...(home ? { url: home } : {}) };
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: page.title,
+    description: page.description,
+    datePublished: page.published,
+    dateModified: page.published,
+    author: org,
+    publisher: org,
+    ...(url ? { mainEntityOfPage: url } : {}),
+    ...(image ? { image } : {}),
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+function layout(page: PageSpec, config: SiteConfig, assets: PageAssets): string {
   const { base } = assets;
-  const url = config.siteUrl ? `${config.siteUrl}${base}${page.path}` : null;
+  const home = config.siteUrl ? `${config.siteUrl}${base}` : null;
+  const url = home ? `${home}${page.path}` : null;
+  const image = home ? `${home}${OG_IMAGE}` : null;
   const links = siteLinks(config.contactEmail !== null)
     .map((l) => `<a href="${base}${l.href}"${l.href === page.path ? ' aria-current="page"' : ''}>${l.label}</a>`)
     .join('');
@@ -60,10 +100,12 @@ function layout(page: { path: string; title: string; description: string; body: 
     <title>${esc(page.title)} · ${SITE_NAME}</title>
     <meta name="description" content="${esc(page.description)}" />
     ${url ? `<link rel="canonical" href="${url}" />\n    <meta property="og:url" content="${url}" />` : ''}
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="${page.published ? 'article' : 'website'}" />
     <meta property="og:site_name" content="${SITE_NAME}" />
     <meta property="og:title" content="${esc(page.title)}" />
     <meta property="og:description" content="${esc(page.description)}" />
+    ${image ? `<meta property="og:image" content="${image}" />\n    <meta name="twitter:card" content="summary_large_image" />` : ''}
+    ${page.published ? articleData(page, url, image, home) : ''}
     <link rel="icon" type="image/svg+xml" href="${base}icons/icon.svg" />
     <link rel="apple-touch-icon" href="${base}icons/apple-touch-icon.png" />
     ${assets.fonts.map((f) => `<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin />`).join('\n    ')}
@@ -75,6 +117,12 @@ function layout(page: { path: string; title: string; description: string; body: 
       <header class="topbar">
         <a class="brand" href="${base}" aria-label="${SITE_NAME} home">${LOGO}<span class="wordmark">TRACK AI <small>Coach</small></span></a>
         <span class="spacer"></span>
+        <nav class="doc-nav" aria-label="Sections">${[
+          ['guides', 'Guides'],
+          ['articles', 'Articles'],
+        ]
+          .map(([href, label]) => `<a href="${base}${href}"${href === page.path ? ' aria-current="page"' : ''}>${label}</a>`)
+          .join('')}</nav>
         <a class="btn primary doc-cta" href="${base}">Open the coach</a>
       </header>
       <article class="doc-body">
@@ -95,6 +143,11 @@ function guidePage(ex: ExerciseDef, config: SiteConfig, base: string) {
   const seen = new Set<string>();
   const mistakes = [...exerciseCues(ex).values()].filter((c) => !seen.has(c.title) && seen.add(c.title));
   const others = EXERCISES.filter((o) => o.id !== ex.id);
+  // Articles about this exercise, then others that link to this guide.
+  const related = [
+    ...ARTICLES.filter((a) => a.about?.includes(ex.id)),
+    ...ARTICLES.filter((a) => !a.about?.includes(ex.id) && JSON.stringify(a.blocks).includes(`](/guides/${ex.id})`)),
+  ].slice(0, 3);
   const body = `
 <nav class="crumbs" aria-label="Breadcrumb"><a href="${base}guides">Exercise guides</a> <span aria-hidden="true">›</span> ${esc(ex.name)}</nav>
 <span class="eyebrow">Form guide · ${esc(ex.muscles)}</span>
@@ -116,10 +169,64 @@ ${adUnit(config)}
   <p>${esc(ex.camera.placement)} ${esc(ex.camera.why)} It counts your reps and tells you out loud when your form slips.</p>
   <a class="btn primary" href="${base}?exercise=${ex.id}">Start a ${esc(ex.name.toLowerCase())} set</a>
 </section>
+${
+  related.length
+    ? `<h2>Related articles</h2>
+<ul class="doc-related">${related.map((a) => `<li><a href="${base}articles/${a.slug}">${esc(a.title)}</a></li>`).join('')}</ul>`
+    : ''
+}
 <h2>More form guides</h2>
 <ul class="doc-related">${others.map((o) => `<li><a href="${base}guides/${o.id}">${esc(GUIDES[o.id].title)}</a></li>`).join('')}</ul>
 ${adUnit(config)}`;
-  return { path: `guides/${ex.id}`, title: g.title, description: g.summary, body };
+  return { path: `guides/${ex.id}`, title: g.title, description: g.summary, body, published: SITE_LAUNCH };
+}
+
+const words = (a: Article) => JSON.stringify(a.blocks).split(/\s+/).length;
+const readingTime = (a: Article) => `${Math.max(2, Math.round(words(a) / 200))} min read`;
+
+function block(b: Block, base: string, lead: boolean): string {
+  if ('h2' in b) return `<h2>${inline(b.h2, base)}</h2>`;
+  if ('p' in b) return `<p${lead ? ' class="lead"' : ''}>${inline(b.p, base)}</p>`;
+  if ('tip' in b) return `<p class="doc-tip">${inline(b.tip, base)}</p>`;
+  const [tag, items] = 'ol' in b ? ['ol', b.ol] : ['ul', b.ul];
+  return `<${tag} class="doc-list">${items.map((i) => `<li>${inline(i, base)}</li>`).join('')}</${tag}>`;
+}
+
+function articlePage(a: Article, config: SiteConfig, base: string): PageSpec {
+  // One ad a little way in, at a section break, and one at the end.
+  const adAt = a.blocks.findIndex((b, i) => 'h2' in b && i >= a.blocks.length * 0.4);
+  const html = a.blocks.map((b, i) => (i === adAt ? adUnit(config) : '') + block(b, base, i === 0)).join('\n');
+  // The next few articles in the list, so every article gets linked from several others.
+  const at = ARTICLES.indexOf(a);
+  const more = [1, 2, 3, 4].map((k) => ARTICLES[(at + k) % ARTICLES.length]);
+  const body = `
+<nav class="crumbs" aria-label="Breadcrumb"><a href="${base}articles">Articles</a> <span aria-hidden="true">›</span> ${esc(a.title)}</nav>
+<span class="eyebrow">Article · ${readingTime(a)}</span>
+<h1>${esc(a.title)}</h1>
+<p class="doc-updated">Published ${longDate(a.published)} by ${SITE_NAME}</p>
+${html}
+<h2>Keep reading</h2>
+<ul class="doc-related">${more.map((o) => `<li><a href="${base}articles/${o.slug}">${esc(o.title)}</a></li>`).join('')}</ul>
+${adUnit(config)}`;
+  return { path: `articles/${a.slug}`, title: a.title, description: a.summary, body, published: a.published };
+}
+
+function articlesIndex(config: SiteConfig, base: string): PageSpec {
+  const body = `
+<span class="eyebrow">Articles</span>
+<h1>Train smarter</h1>
+<p class="lead">Practical advice for training at home: simple workouts, fixes for the most common form mistakes, and how the AI coach sees you.</p>
+<ul class="doc-cards">${ARTICLES.map(
+    (a) =>
+      `<li><a class="card doc-card" href="${base}articles/${a.slug}"><b>${esc(a.title)}</b><span>${esc(a.summary)}</span><span class="muscles">${readingTime(a)}</span></a></li>`,
+  ).join('')}</ul>
+${adUnit(config)}`;
+  return {
+    path: 'articles',
+    title: 'Articles',
+    description: 'Home workout plans, form fixes and training advice from the TRACK AI coach: sets and reps, warm-ups, progressive overload and more.',
+    body,
+  };
 }
 
 function guidesIndex(config: SiteConfig, base: string) {
@@ -247,9 +354,11 @@ function contactPage(email: string) {
 /** Every content page, ready to write out. */
 export function sitePages(config: SiteConfig, assets: PageAssets): SitePage[] {
   const { base } = assets;
-  const pages = [
+  const pages: PageSpec[] = [
     guidesIndex(config, base),
     ...EXERCISES.map((ex) => guidePage(ex, config, base)),
+    articlesIndex(config, base),
+    ...ARTICLES.map((a) => articlePage(a, config, base)),
     aboutPage(config, base),
     privacyPage(config),
     termsPage(config, base),

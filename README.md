@@ -25,10 +25,12 @@ breakdown.
 - **AI debrief with Claude** (optional): after the set, the server turns your numbers into two or three
   spoken sentences of coaching. Without an API key the app uses its on-device summary.
 - **Free, supported by ads** (Google AdSense), with a real website around the app: step-by-step form
-  guides for every exercise, about, privacy policy and terms pages ([set up ads](#ads-google-adsense)).
+  guides for every exercise, training articles, about, privacy policy and terms pages
+  ([set up ads](#ads-google-adsense)).
 - **Works offline**: the whole app is saved on the first visit (the body-tracking model the first time
-  you start a set), keeps the screen awake during a set, history of your sets. A warm, editorial look: cream and espresso with bronze accents, Bebas Neue headlines and Inter
-  text (both bundled, SIL Open Font License, see `src/assets/fonts`).
+  you start a set), keeps the screen awake during a set, history of your sets. A warm, editorial look:
+  cream and espresso with bronze accents, Bebas Neue headlines and Inter text (both bundled, SIL Open
+  Font License, see `src/assets/fonts`).
 - **AI people, not stick figures**: exercise photos and camera-free demo videos of photorealistic
   **AI-generated people who don't exist**. The demo runs the real tracking on the video, exactly like
   a camera feed, and the app labels them as AI-generated ([how to create them](#ai-people)).
@@ -113,25 +115,51 @@ gets the on-device summary. For AI debriefs, run the server below and point the 
 instantly and search engines and AdSense's reviewers can read them without running the app:
 
 - `/guides` and a form guide per exercise (`/guides/squat`, …): steps, the mistakes the coach checks
-  (taken from its own rules), sets and reps, easier and harder versions, safety, and a button that
-  opens the coach on that exercise
+  (taken from its own rules), sets and reps, easier and harder versions, safety, related articles and
+  a button that opens the coach on that exercise
+- `/articles` and fourteen training articles (`/articles/warm-up`, …): a beginner workout, warming
+  up, sets and reps, progressing at home, rest and recovery, a fix for the most common fault in each
+  exercise, setting up the phone and how the tracking works. They're in
+  [`src/site/articles.ts`](src/site/articles.ts); add one there and it gets its page, a place in the
+  sitemap and links from the index and the related guides
 - `/about`, `/privacy` (camera, local storage, Google's advertising cookies and opt-outs), `/terms`
   (health notice, no warranty) and `/contact` (only when `VITE_CONTACT_EMAIL` is set)
 - `/robots.txt`, `/sitemap.xml` (with a known address) and `/ads.txt` (with AdSense)
 
-The privacy policy and terms are a solid starting point, not legal advice: read them and adapt them to
-you. The home page footer links to all of them; the dev server serves them too.
+With a known address every page also gets a canonical link, a share picture
+([`public/og-image.png`](public/og-image.png), redrawn by `node scripts/make-og-image.mjs`) and, on
+articles and guides, structured data for search engines. The privacy policy and terms are a solid
+starting point, not legal advice: read them and adapt them to you. The home page links to all of them;
+the dev server serves them too.
 
 ## Ads (Google AdSense)
 
-The app is free and earns from display ads. Nothing shows until you add your AdSense details:
+The app is free and earns from display ads. Nothing shows until you add your AdSense details to
+[`.env.production`](.env.production). It's committed on purpose, because everything in it is public
+anyway (it ends up in the page source); never put keys or passwords there. A value set in Vercel's
+environment variables overrides the file.
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
 | `VITE_ADSENSE_CLIENT` | `ca-pub-1234567890123456` | Your publisher id: adds AdSense's code to every page, `/ads.txt` and the site-ownership tag |
 | `VITE_ADSENSE_SLOT` | `9876543210` | A responsive display ad unit, shown on the home page, after a set, in History and on the website pages |
+| `GOOGLE_SITE_VERIFICATION` | `abc123XYZ-_…` | Google Search Console's HTML tag code, to prove the site is yours |
 | `SITE_URL` | `https://trackai.fit` | The site's address, for the sitemap and canonical links (on Vercel the production address is used when unset) |
 | `VITE_CONTACT_EMAIL` | `hello@trackai.fit` | Adds the contact page (AdSense's reviewers look for one) |
+
+Getting approved, step by step:
+
+1. Connect your own domain in Vercel (**Settings → Domains**). The sitemap and canonical links follow it.
+2. Sign up at [adsense.google.com](https://adsense.google.com) with that domain. Put the publisher id in
+   `.env.production` as `VITE_ADSENSE_CLIENT` and push; Vercel redeploys with AdSense's code,
+   `/ads.txt` and the ownership tag.
+3. In AdSense, open **Sites**, click **Verify** and then **Request review**. Reviews take days to a few
+   weeks.
+4. Publish a consent message for Europe (**Privacy & messaging → European regulations**).
+5. Create one display ad unit (**Ads → By ad unit → Display ads**, responsive) and put its id in
+   `VITE_ADSENSE_SLOT`. Until then the ad spaces stay hidden.
+6. Add the site to [Google Search Console](https://search.google.com/search-console) (HTML tag
+   method, code in `GOOGLE_SITE_VERIFICATION`) and submit `/sitemap.xml`.
 
 Ads never appear on the workout screen or on empty pages. Leave AdSense's **Auto ads** off (or at least
 its anchor and vignette formats): they could cover the workout screen, and they insert ads into the
@@ -166,7 +194,7 @@ API with `VITE_COACH_API_URL` + `ALLOWED_ORIGINS` (see [`.env.example`](.env.exa
 | `DEBRIEFS_PER_MINUTE` | `12` | Per-IP rate limit |
 | `VITE_COACH_API_URL` | same origin | (build time) where the frontend finds the API |
 | `VITE_AI_DEBRIEF` | on | (build time) `off` hides the AI debrief, for hosting without the server |
-| `VITE_ADSENSE_CLIENT`, `VITE_ADSENSE_SLOT`, `SITE_URL`, `VITE_CONTACT_EMAIL` | – | Ads and the website pages (see [Ads](#ads-google-adsense)) |
+| `VITE_ADSENSE_CLIENT`, `VITE_ADSENSE_SLOT`, `GOOGLE_SITE_VERIFICATION`, `SITE_URL`, `VITE_CONTACT_EMAIL` | – | Ads and the website pages (see [Ads](#ads-google-adsense)) |
 
 **What the AI sees:** only the set's numbers (exercise, reps, form score, which faults happened how
 often) — never images. The server accepts only known exercise names and fault titles and substitutes its

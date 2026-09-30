@@ -5,6 +5,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Public production settings (ad ids and the like), committed on purpose
+!.env.production
 coverage
 test-results
 playwright-report

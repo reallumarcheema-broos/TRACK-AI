@@ -3,6 +3,7 @@ import type { ExerciseId } from '../core/exercise';
 import { EXERCISES } from '../exercises';
 import { hasAiPeople, heroPhoto } from '../media/people';
 import { loadHistory } from '../state/history';
+import { FEATURED } from '../site/featured';
 import { siteLinks } from '../site/site';
 import { Ad } from './Ad';
 import { ExerciseArt } from './ExerciseArt';
@@ -216,6 +217,26 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
             {trend.example ? 'Yours appears after a few sets' : change > 3 ? 'Great progress!' : change < -3 ? "Let's get it back up" : 'Nice and steady'}
           </span>
         </div>
+      </section>
+
+      <section className="section" aria-labelledby="learn-title">
+        <div className="section-head">
+          <span className="eyebrow">Learn</span>
+          <h2 id="learn-title">Train smarter.</h2>
+        </div>
+        <ul className="learn-list">
+          {FEATURED.map((a) => (
+            <li key={a.slug}>
+              <a className="card learn-card" href={`${BASE}articles/${a.slug}`}>
+                <b>{a.title}</b>
+                <span>{a.text}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <a className="guide-link" href={`${BASE}articles`}>
+          All training articles →
+        </a>
       </section>
 
       <footer id="privacy" className="foot">

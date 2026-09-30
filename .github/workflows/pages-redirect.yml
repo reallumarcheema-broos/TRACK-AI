@@ -1,0 +1,113 @@
+name: Redirect GitHub Pages
+
+# The site lives on Vercel now (the repository's "Website" address). This replaces the old copy on
+# GitHub Pages (https://<owner>.github.io/<repo>/) with a page that sends visitors, links and search
+# engines to the same page there, and removes the old offline copy from browsers that saved it.
+# Runs when this file changes, or from the Actions tab (optionally with another address).
+on:
+  push:
+    paths: [.github/workflows/pages-redirect.yml]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to send visitors, e.g. https://example.com (empty = the repository's website address)
+        required: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write the redirect
+        env:
+          TARGET: ${{ inputs.target || github.event.repository.homepage }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          TARGET="${TARGET%/}"
+          if ! [[ "$TARGET" =~ ^https://[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::Set the repository's website address (About → Website) to the new site, e.g. https://example.com"
+            exit 1
+          fi
+          mkdir site
+          cat > site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="robots" content="noindex">
+          <title>TRACK AI Coach has moved</title>
+          <link rel="canonical" href="__TARGET__/">
+          <noscript><meta http-equiv="refresh" content="0; url=__TARGET__/"></noscript>
+          <script>
+          (function () {
+            // Same page, new address: /__REPO__/privacy?x=1 → __TARGET__/privacy?x=1
+            var base = '/__REPO__';
+            var path = location.pathname;
+            if (path.toLowerCase().indexOf(base.toLowerCase()) === 0) path = path.slice(base.length);
+            if (path.charAt(0) !== '/') path = '/' + path;
+            var go = function () { location.replace('__TARGET__' + path + location.search + location.hash); };
+            // Drop the old app's offline copy first (at most a moment), then go.
+            var tidy = [];
+            if ('serviceWorker' in navigator) {
+              tidy.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+                return Promise.all(rs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            if (window.caches) {
+              tidy.push(caches.keys().then(function (ks) {
+                return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+            Promise.race([Promise.all(tidy), new Promise(function (r) { setTimeout(r, 800); })]).then(go, go);
+          })();
+          </script>
+          <style>body{font:17px/1.5 system-ui,sans-serif;background:#efe8de;color:#17120e;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;box-sizing:border-box;text-align:center}a{color:#955820}</style>
+          </head>
+          <body>
+          <p>TRACK AI Coach has moved to <a href="__TARGET__/">__TARGET__</a>.</p>
+          </body>
+          </html>
+          EOF
+          cp site/index.html site/404.html
+          # Browsers that installed the old app check this file for updates; this version removes it.
+          cat > site/sw.js <<'EOF'
+          // TRACK AI Coach has moved. Removes the old offline copy, unregisters itself and reloads open
+          // pages so they follow the redirect.
+          self.addEventListener('install', function () { self.skipWaiting(); });
+          self.addEventListener('activate', function (event) {
+            event.waitUntil(
+              caches.keys()
+                .then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+                .then(function () { return self.registration.unregister(); })
+                .then(function () { return self.clients.matchAll({ type: 'window' }); })
+                .then(function (clients) {
+                  clients.forEach(function (c) { c.navigate(c.url).catch(function () {}); });
+                })
+            );
+          });
+          EOF
+          sed -i -e "s#__TARGET__#$TARGET#g" -e "s#__REPO__#$REPO#g" site/index.html site/404.html
+          echo "GitHub Pages now sends visitors to $TARGET" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

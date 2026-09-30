@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
-import { ADSENSE_CONNECT_SRC, adsenseHead, SITE_NAME, siteConfig, type SiteConfig } from './src/site/site.ts';
+import { ADSENSE_CONNECT_SRC, adsenseHead, OG_IMAGE, SITE_NAME, siteConfig, type SiteConfig } from './src/site/site.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const MEDIAPIPE_WASM_DIR = path.join(root, 'node_modules/@mediapipe/tasks-vision/wasm');
@@ -163,6 +163,9 @@ function website(config: SiteConfig): Plugin {
         `<meta property="og:site_name" content="${SITE_NAME}" />`,
         `<meta property="og:title" content="${SITE_NAME}: your AI trainer" />`,
         '<meta property="og:description" content="Prop up your phone and train with a free AI coach: real-time rep counting, form checks and voice coaching." />',
+        url && `<meta property="og:image" content="${url}${OG_IMAGE}" />`,
+        url && '<meta name="twitter:card" content="summary_large_image" />',
+        config.googleSiteVerification && `<meta name="google-site-verification" content="${config.googleSiteVerification}" />`,
         config.adsenseClient && adsenseHead(config.adsenseClient),
       ].filter(Boolean);
       return html.replace('</head>', `    ${head.join('\n    ')}\n  </head>`);

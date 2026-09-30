@@ -1091,6 +1091,86 @@ a.brand {
   font-size: 12px;
 }
 
+/* The website's section links: a row of their own under the header on phones, inline on wider screens. */
+.doc .topbar {
+  flex-wrap: wrap;
+}
+
+.doc-nav {
+  display: flex;
+  order: 3;
+  flex-basis: 100%;
+  gap: 4px;
+  margin-left: -12px;
+}
+
+.doc-nav a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.doc-nav a:hover,
+.doc-nav a[aria-current='page'] {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+@media (min-width: 620px) {
+  .doc-nav {
+    order: 0;
+    flex-basis: auto;
+    margin-left: 0;
+  }
+}
+
+.doc-tip {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--bronze-fill);
+  font-size: 16px;
+}
+
+.learn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.learn-card {
+  display: grid;
+  gap: 4px;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.learn-card b {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.learn-card span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.learn-card:hover {
+  border-color: var(--line-strong);
+}
+
+@media (min-width: 760px) {
+  .learn-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .doc-body {
   display: grid;
   gap: 16px;
