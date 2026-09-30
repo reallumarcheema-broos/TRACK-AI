@@ -5,6 +5,7 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
+import { answerLicense, type LicenseConfig } from '../api/license';
 import { DEBRIEF_LIMITS, parseDebriefRequest, type DebriefResponse } from '../src/shared/debrief';
 import { canonicalize, type Debriefer } from './debrief';
 
@@ -16,8 +17,12 @@ export interface AppOptions {
   model: string;
   /** Origins allowed to call the API cross-origin (frontend hosted elsewhere). */
   allowedOrigins?: string[];
-  /** Debriefs per client IP per minute. */
+  /** Debriefs (and, separately, license checks) per client IP per minute. */
   ratePerMinute?: number;
+  /** Lemon Squeezy store and product for subscriptions; null until payments are set up. */
+  license?: LicenseConfig | null;
+  /** For tests: stands in for Lemon Squeezy. */
+  fetch?: typeof fetch;
   now?: () => number;
 }
 
@@ -143,6 +148,7 @@ export function createApp(opts: AppOptions) {
       send(res, 200, { ok: true, ai: opts.debrief !== null, model: opts.debrief ? opts.model : null }, cors);
       return;
     }
+    if (pathname === '/api/license') return handleLicense(req, res, cors);
     if (pathname !== '/api/debrief') return send(res, 404, { error: 'Not found' }, cors);
     if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' }, { ...cors, Allow: 'POST' });
     if (!opts.debrief) return send(res, 503, { error: 'AI debrief is not configured on this server' }, cors);
@@ -167,6 +173,22 @@ export function createApp(opts: AppOptions) {
     if (!text) return send(res, 502, { error: 'The AI coach is unavailable right now' }, cors);
     const out: DebriefResponse = { text, source: 'claude' };
     send(res, 200, out, cors);
+  }
+
+  async function handleLicense(req: IncomingMessage, res: ServerResponse, cors: Record<string, string>): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' }, { ...cors, Allow: 'POST' });
+    if (!(req.headers['content-type'] ?? '').includes('application/json')) return send(res, 415, { error: 'Send JSON' }, cors);
+    if (limited(`license ${clientIp(req)}`)) return send(res, 429, { error: 'Too many requests — try again in a minute' }, { ...cors, 'Retry-After': '60' });
+    const raw = await readBody(req, 4096);
+    if (raw === null) return send(res, 413, { error: 'Request too large' }, { ...cors, Connection: 'close' });
+    let body: unknown = null;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      // answerLicense refuses it like any other bad input.
+    }
+    const { status, reply } = await answerLicense(body, opts.license ?? null, opts.fetch);
+    send(res, status, reply, cors);
   }
 
   function serveStatic(req: IncomingMessage, res: ServerResponse, pathname: string): void {

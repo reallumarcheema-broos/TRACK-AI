@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "npm run fetch-models; VITE_AI_DEBRIEF=off npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|models/|mediapipe/).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!api/|assets/|models/|mediapipe/).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",

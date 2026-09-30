@@ -2,11 +2,13 @@ import { useMemo, type ReactNode } from 'react';
 import type { ExerciseId } from '../core/exercise';
 import { EXERCISES } from '../exercises';
 import { hasAiPeople, heroPhoto } from '../media/people';
+import { FREE_WORKOUTS, PAYMENTS_ON, PRICE, useAccess } from '../pay/license';
 import { detectPlatform, isStandalone } from '../pwa/install';
 import { loadHistory } from '../state/history';
 import { ExerciseArt } from './ExerciseArt';
 import { GetAppButtons, QrCode } from './GetApp';
-import { IconChart, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
+import { IconChart, IconCheck, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
+import { PriceBlock, type PaywallStart } from './Paywall';
 
 const VIEW_LABEL = { side: 'Side-on', front: 'Facing camera', diagonal: 'Angled' } as const;
 
@@ -65,7 +67,49 @@ function useScoreTrend(): { scores: number[]; example: boolean } {
   }, []);
 }
 
-export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () => void; onSettings: () => void }) {
+/** "Try it free, then $14.99 a month" — only when payments are set up. */
+function Pricing({ onPaywall }: { onPaywall: (start: PaywallStart) => void }) {
+  const access = useAccess();
+  return (
+    <section id="pricing" className="section pricing" aria-labelledby="pricing-title">
+      <div className="pricing-copy">
+        <span className="eyebrow">Pricing</span>
+        <h2 id="pricing-title">
+          Try it free. Then {PRICE} a month.
+        </h2>
+        <p>
+          Your first {FREE_WORKOUTS} workouts are free: no card, no account. After that, TRACK AI Pro is {PRICE} a month, and you can
+          cancel anytime.
+        </p>
+      </div>
+      <div className="price-card">
+        <span className="k">TRACK AI Pro</span>
+        <PriceBlock />
+        {access.kind === 'subscribed' ? (
+          <p className="subscribed">
+            <IconCheck /> You're subscribed on this device
+          </p>
+        ) : (
+          <div className="price-actions">
+            <button className="btn primary" onClick={() => scrollTo('exercises')}>
+              Start free
+            </button>
+            <button className="btn ghost" onClick={() => onPaywall('key')}>
+              I have a license key
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function Home(props: {
+  onPick: (id: ExerciseId) => void;
+  onHistory: () => void;
+  onSettings: () => void;
+  onPaywall: (start: PaywallStart) => void;
+}) {
   const hero = heroPhoto();
   const standalone = isStandalone();
   const desktop = detectPlatform(navigator.userAgent, navigator.maxTouchPoints) === 'desktop';
@@ -85,6 +129,7 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
         <nav className="nav-links" aria-label="Sections">
           <button onClick={() => scrollTo('exercises')}>Exercises</button>
           <button onClick={() => scrollTo('how')}>How it works</button>
+          {PAYMENTS_ON && <button onClick={() => scrollTo('pricing')}>Pricing</button>}
           <button onClick={() => scrollTo('privacy')}>Privacy</button>
         </nav>
         <span className="spacer" />
@@ -219,14 +264,16 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
         </div>
       </section>
 
+      {PAYMENTS_ON && <Pricing onPaywall={props.onPaywall} />}
+
       {!standalone && (
         <section id="get-app" className="section get-app" aria-labelledby="get-app-title">
           <div className="get-app-copy">
             <span className="eyebrow">Get the app</span>
             <h2 id="get-app-title">Your coach, one tap away.</h2>
             <p>
-              Install TRACK AI on your phone: its own icon on your home screen, full screen, and it works offline. Free, with
-              no app store and no account.
+              Install TRACK AI on your phone: its own icon on your home screen, full screen, and it works offline.
+              {PAYMENTS_ON ? ' No app store and no account needed.' : ' Free, with no app store and no account.'}
             </p>
             <GetAppButtons />
           </div>

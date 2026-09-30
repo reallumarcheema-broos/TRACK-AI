@@ -1,7 +1,5 @@
+import { API_BASE } from '../api';
 import type { DebriefRequest, DebriefResponse } from '../shared/debrief';
-
-/** Base URL of the debrief API. Same origin by default; override with VITE_COACH_API_URL. */
-const API_BASE = (import.meta.env.VITE_COACH_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
 /**
  * Builds for hosts without the TRACK AI server (GitHub Pages) set VITE_AI_DEBRIEF=off: the option

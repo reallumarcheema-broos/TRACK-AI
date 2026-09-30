@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { PAYMENTS_ON } from '../pay/license';
 import { promptInstall, useInstall, type Platform } from '../pwa/install';
 import { IconClose } from './icons';
+import { Sheet, useSheet } from './Sheet';
 
 type Target = 'ios' | 'android';
 
@@ -17,20 +19,7 @@ const siteUrl = () => `${location.origin}${import.meta.env.BASE_URL}`;
 /** "Install on iPhone" / "Install on Android". Hidden inside the installed app. */
 export function GetAppButtons() {
   const install = useInstall();
-  const [sheet, setSheet] = useState<Target | null>(null);
-  const opener = useRef<HTMLElement | null>(null);
-
-  // The open sheet owns a history entry, so the phone's back gesture closes it instead of leaving the page.
-  useEffect(() => {
-    if (!sheet) return;
-    const onPop = () => {
-      if (history.state?.sheet) return;
-      setSheet(null);
-      opener.current?.focus();
-    };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, [sheet]);
+  const sheet = useSheet<Target>();
 
   if (install.standalone) return null;
   if (install.installed) {
@@ -38,20 +27,12 @@ export function GetAppButtons() {
   }
 
   const open = async (target: Target, el: HTMLElement) => {
-    opener.current = el;
     // Android (and desktop Chrome/Edge) can install with one tap.
     if (target === 'android' && install.platform === 'android' && install.canPrompt) {
       const outcome = await promptInstall();
       if (outcome !== 'unavailable') return;
     }
-    if (!history.state?.sheet) history.pushState({ ...history.state, sheet: true }, '');
-    setSheet(target);
-  };
-
-  const close = () => {
-    if (history.state?.sheet) return history.back(); // the popstate listener above closes it
-    setSheet(null);
-    opener.current?.focus();
+    sheet.open(target, el);
   };
 
   return (
@@ -75,48 +56,17 @@ export function GetAppButtons() {
           ),
         )}
       </div>
-      {sheet && <InstallSheet target={sheet} platform={install.platform} inAppBrowser={install.inAppBrowser} onClose={close} />}
+      {sheet.value && (
+        <InstallSheet target={sheet.value} platform={install.platform} inAppBrowser={install.inAppBrowser} onClose={sheet.close} />
+      )}
     </>
   );
 }
 
 function InstallSheet(props: { target: Target; platform: Platform; inAppBrowser: boolean; onClose: () => void }) {
   const { target, platform, inAppBrowser, onClose } = props;
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const onThisPhone = platform === target;
   const browser = target === 'ios' ? 'Safari' : 'Chrome';
-
-  useEffect(() => {
-    closeRef.current?.focus();
-    // A modal: the page behind stays put and Tab cycles through the sheet's own controls.
-    // Hiding the page's scrollbar would widen it, so pad by the scrollbar's width meanwhile.
-    const { overflow, paddingRight } = document.body.style;
-    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = 'hidden';
-    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onCloseRef.current();
-      const sheet = sheetRef.current;
-      if (e.key !== 'Tab' || !sheet) return;
-      const items = sheet.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
-      const first = items[0];
-      const last = items[items.length - 1];
-      const inside = sheet.contains(document.activeElement);
-      if (e.shiftKey ? !inside || document.activeElement === first : !inside || document.activeElement === last) {
-        e.preventDefault();
-        (e.shiftKey ? last : first)?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = overflow;
-      document.body.style.paddingRight = paddingRight;
-    };
-  }, []);
 
   const steps: { icon: ReactNode; title: string; text: string }[] =
     target === 'ios'
@@ -132,57 +82,54 @@ function InstallSheet(props: { target: Target; platform: Platform; inAppBrowser:
         ];
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <div>
-            <span className="eyebrow">Free · No app store · Works offline</span>
-            <h2 id="sheet-title">Install on {NAME[target]}</h2>
-          </div>
-          <button ref={closeRef} className="icon-btn" onClick={onClose} aria-label="Close">
-            <IconClose />
-          </button>
+    <Sheet labelledBy="sheet-title" onClose={onClose}>
+      <div className="sheet-head">
+        <div>
+          <span className="eyebrow">{PAYMENTS_ON ? 'No app store · Works offline' : 'Free · No app store · Works offline'}</span>
+          <h2 id="sheet-title">Install on {NAME[target]}</h2>
         </div>
-
-        {!onThisPhone &&
-          (platform === 'desktop' ? (
-            <div className="sheet-qr">
-              <QrCode value={siteUrl()} />
-              <p>
-                Scan with your {NAME[target]}’s camera to open TRACK AI in {browser}, then follow these steps.
-              </p>
-            </div>
-          ) : (
-            <p className="sheet-note">
-              Open <b>{siteUrl()}</b> on your {NAME[target]} in {browser}, then follow these steps.
-            </p>
-          ))}
-
-        {onThisPhone && inAppBrowser && (
-          <p className="sheet-note warn">
-            You’re in another app’s built-in browser, which can’t install apps. Tap its ••• menu and choose “Open in {browser}”
-            first.
-          </p>
-        )}
-
-        <ol className="sheet-steps">
-          {steps.map((s, i) => (
-            <li key={s.title}>
-              <span className="n">{i + 1}</span>
-              <span className="glyph">{s.icon}</span>
-              <div>
-                <b>{s.title}</b>
-                <span>{s.text}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <button className="btn primary big" onClick={onClose}>
-          Got it
+        <button className="icon-btn" onClick={onClose} aria-label="Close">
+          <IconClose />
         </button>
       </div>
-    </div>
+
+      {!onThisPhone &&
+        (platform === 'desktop' ? (
+          <div className="sheet-qr">
+            <QrCode value={siteUrl()} />
+            <p>
+              Scan with your {NAME[target]}’s camera to open TRACK AI in {browser}, then follow these steps.
+            </p>
+          </div>
+        ) : (
+          <p className="sheet-note">
+            Open <b>{siteUrl()}</b> on your {NAME[target]} in {browser}, then follow these steps.
+          </p>
+        ))}
+
+      {onThisPhone && inAppBrowser && (
+        <p className="sheet-note warn">
+          You’re in another app’s built-in browser, which can’t install apps. Tap its ••• menu and choose “Open in {browser}” first.
+        </p>
+      )}
+
+      <ol className="sheet-steps">
+        {steps.map((s, i) => (
+          <li key={s.title}>
+            <span className="n">{i + 1}</span>
+            <span className="glyph">{s.icon}</span>
+            <div>
+              <b>{s.title}</b>
+              <span>{s.text}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <button className="btn primary big" onClick={onClose}>
+        Got it
+      </button>
+    </Sheet>
   );
 }
 

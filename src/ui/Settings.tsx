@@ -1,22 +1,102 @@
 import { useEffect, useState } from 'react';
 import { AI_DEBRIEF_ENABLED } from '../coach/debrief';
 import { listEnglishVoices } from '../coach/voice';
+import { billingUrl, FREE_WORKOUTS, PAYMENTS_ON, PRICE, removeLicense, useAccess } from '../pay/license';
 import type { ModelQuality } from '../pose/detector';
 import type { Settings as SettingsT } from '../state/settings';
 import { IconBack, IconSound } from './icons';
+import type { PaywallStart } from './Paywall';
 
 export interface SettingsProps {
   settings: SettingsT;
   onChange: (patch: Partial<SettingsT>) => void;
   onTestVoice: () => void;
+  onPaywall: (start: PaywallStart) => void;
   onBack: () => void;
+}
+
+/** The plan on this device: free workouts left, or the subscription and where to manage it. */
+function Subscription({ onPaywall }: { onPaywall: (start: PaywallStart) => void }) {
+  const access = useAccess();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const billing = billingUrl();
+
+  const remove = async () => {
+    if (!confirm('Remove your subscription from this device? You can add it back with your license key.')) return;
+    setBusy(true);
+    const reply = await removeLicense();
+    setBusy(false);
+    setMessage(reply.ok ? 'Removed from this device. Your license key now has a free place for another phone.' : reply.message);
+  };
+
+  const subscribed = access.kind === 'subscribed' || access.kind === 'recheck';
+  return (
+    <section className="card">
+      <h2 className="eyebrow">Subscription</h2>
+      {subscribed ? (
+        <>
+          <div className="setting">
+            <div>
+              <div className="label">TRACK AI Pro</div>
+              <div className="desc">
+                {access.kind === 'subscribed' ? 'Active on this device.' : 'Connect to the internet to confirm your subscription.'}
+              </div>
+            </div>
+            {billing && (
+              <a className="btn" href={billing} target="_blank" rel="noopener">
+                Manage
+              </a>
+            )}
+          </div>
+          <div className="setting">
+            <div>
+              <div className="label">Move to another phone</div>
+              <div className="desc">Frees this device's place on your license key.</div>
+            </div>
+            <button className="btn" onClick={() => void remove()} disabled={busy}>
+              {busy ? 'Removing…' : 'Remove'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="setting">
+            <div>
+              <div className="label">{access.kind === 'free' && access.ended ? 'Your subscription has ended' : 'Free plan'}</div>
+              <div className="desc">
+                {access.kind === 'free' ? `${access.left} of ${FREE_WORKOUTS} free workouts left. ` : ''}TRACK AI Pro is {PRICE} a month.
+              </div>
+            </div>
+            <button className="btn" onClick={() => onPaywall('offer')}>
+              Subscribe
+            </button>
+          </div>
+          <div className="setting">
+            <div>
+              <div className="label">Already subscribed?</div>
+              <div className="desc">Unlock this device with the license key from your receipt email.</div>
+            </div>
+            <button className="btn" onClick={() => onPaywall('key')}>
+              Enter key
+            </button>
+          </div>
+        </>
+      )}
+      {message && (
+        <p className="desc" role="status">
+          {message}
+        </p>
+      )}
+    </section>
+  );
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return <button className="switch" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} />;
 }
 
-export function Settings({ settings, onChange, onTestVoice, onBack }: SettingsProps) {
+export function Settings({ settings, onChange, onTestVoice, onPaywall, onBack }: SettingsProps) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(listEnglishVoices);
   useEffect(() => {
     if (typeof speechSynthesis === 'undefined') return;
@@ -33,6 +113,8 @@ export function Settings({ settings, onChange, onTestVoice, onBack }: SettingsPr
         </button>
         <h1>Settings</h1>
       </header>
+
+      {PAYMENTS_ON && <Subscription onPaywall={onPaywall} />}
 
       <section className="card">
         <h2 className="eyebrow">Coach voice</h2>

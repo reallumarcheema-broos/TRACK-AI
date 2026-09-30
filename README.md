@@ -112,21 +112,42 @@ The demo runs the video through the same MediaPipe tracking as the camera, so it
 coach does with you, and the app labels the people as AI-generated. Until the files exist, the cards
 show a plain tile and the demo button is hidden.
 
-## Put it online (GitHub Pages, free)
+## Put it online (Vercel)
 
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the app and publishes it to
-GitHub Pages every time the default branch changes (you can also run it from the **Actions** tab).
-One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. The site then
-lives at `https://<owner>.github.io/<repo>/`, here **https://reallumarcheema-broos.github.io/TRACK-AI/**,
-with HTTPS, so the camera and **Add to Home Screen** work.
-
-**Vercel** works too: import the repository (vercel.com → Add New → Project) and click **Deploy**.
+Import the repository at vercel.com (**Add New → Project**) and click **Deploy**.
 [`vercel.json`](vercel.json) already holds the settings (Vite, `dist`, the pose models bundled, unknown
-addresses open the app, security headers), and every push redeploys.
+addresses open the app, security headers), and every push redeploys. The site gets HTTPS, so the camera
+and **Add to Home Screen** work.
 
-Both only host files, so those builds turn the AI debrief off (`VITE_AI_DEBRIEF=off`) and every set
-gets the on-device summary. For AI debriefs, run the server below and point the site at it with
-`VITE_COACH_API_URL` instead.
+Vercel serves the app plus one small function, [`api/license.ts`](api/license.ts) (the subscription
+check below), but not the AI debrief server, so that build turns the AI debrief off
+(`VITE_AI_DEBRIEF=off`) and every set gets the on-device summary. For AI debriefs, run the server below
+and point the site at it with `VITE_COACH_API_URL` instead.
+
+## Paid plan (Lemon Squeezy)
+
+The first 3 workouts are free; after that the coach needs a subscription, sold through
+[Lemon Squeezy](https://www.lemonsqueezy.com) (it handles checkout, taxes and receipts). Buyers get a
+**license key** by email and enter it in the app, which asks `/api/license` to check it with Lemon
+Squeezy's license API (no secret key needed). The key is re-checked about once a day, the app keeps
+working offline for up to two weeks in between, and a cancelled or refunded subscription locks it again.
+Settings shows the plan, links to Lemon Squeezy's customer portal to cancel or change the card, and
+frees the device for another phone. Demos stay free.
+
+1. In Lemon Squeezy, create a **subscription** product (e.g. $14.99 every month) and turn on
+   **license keys** (choose how many devices one key may unlock).
+2. Set these variables in Vercel (**Settings → Environment Variables**), then redeploy:
+
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `VITE_CHECKOUT_URL` | `https://yourstore.lemonsqueezy.com/buy/…` | The product's checkout link; turns the paywall on |
+| `LEMONSQUEEZY_STORE_ID` | `12345` | Your store's id: keys from other stores are refused |
+| `LEMONSQUEEZY_PRODUCT_ID` | `67890` | The product's id: keys for other products are refused |
+| `VITE_PRICE` | `$14.99` | Optional: the price shown in the app (default `$14.99`) |
+
+Without `VITE_CHECKOUT_URL` there is no paywall at all. The check runs in the browser, like any app that
+works offline, so it stops ordinary users, not a determined developer; keep the repository private so the
+code isn't one click away.
 
 ## Production: app + AI debrief server
 
@@ -155,6 +176,7 @@ API with `VITE_COACH_API_URL` + `ALLOWED_ORIGINS` (see [`.env.example`](.env.exa
 | `DEBRIEFS_PER_MINUTE` | `12` | Per-IP rate limit |
 | `VITE_COACH_API_URL` | same origin | (build time) where the frontend finds the API |
 | `VITE_AI_DEBRIEF` | on | (build time) `off` hides the AI debrief, for hosting without the server |
+| `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_PRODUCT_ID` | – | The subscription that unlocks the app (see [Paid plan](#paid-plan-lemon-squeezy)) |
 
 **What the AI sees:** only the set's numbers (exercise, reps, form score, which faults happened how
 often) — never images. The server accepts only known exercise names and fault titles and substitutes its

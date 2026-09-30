@@ -1271,6 +1271,173 @@ input[type='range'] {
   color: var(--muted);
 }
 
+/* Paid plan: price, paywall sheet, license key form, pricing section. */
+
+.price {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.price b {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 0.85;
+}
+
+.price span {
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.perks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.perks li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.perks svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--good);
+}
+
+.paywall-lead {
+  color: var(--muted);
+}
+
+.paywall-small {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.key-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.key-form label {
+  font-weight: 600;
+}
+
+.key-form .paywall-small {
+  text-align: left;
+}
+
+.field {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--paper-2);
+  color: var(--text);
+  font: inherit;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 15px;
+}
+
+.form-error {
+  color: var(--bad);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.free-note {
+  grid-column: 1 / -1;
+  justify-self: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+
+.pricing {
+  align-items: center;
+}
+
+.pricing-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.pricing-copy h2 {
+  font-size: clamp(40px, 11vw, 64px);
+}
+
+.pricing-copy p {
+  color: var(--muted);
+  max-width: 32em;
+}
+
+.price-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.price-card .k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+
+.price-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.subscribed {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--good);
+}
+
+.subscribed svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (min-width: 960px) {
+  .pricing {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 40px;
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

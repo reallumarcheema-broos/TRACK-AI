@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { ExerciseDef } from '../core/exercise';
 import type { FacingMode } from '../pose/camera';
 import { hasDemo } from '../media/people';
+import { canStartWorkout, FREE_WORKOUTS, useAccess } from '../pay/license';
 import { ExerciseArt } from './ExerciseArt';
-import { IconBack, IconCamera, IconPlay } from './icons';
+import { IconBack, IconCamera, IconLock, IconPlay } from './icons';
 import { PlacementDiagram } from './PlacementDiagram';
 
 export interface SetupProps {
@@ -13,13 +14,19 @@ export interface SetupProps {
   onTarget: (n: number) => void;
   onFacing: (f: FacingMode) => void;
   onStart: (demo: boolean) => void;
+  /** Free workouts used up: offer the subscription instead of starting. */
+  onUnlock: () => void;
   onBack: () => void;
 }
 
-export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStart, onBack }: SetupProps) {
+export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStart, onUnlock, onBack }: SetupProps) {
   const hold = exercise.kind === 'hold';
+  const access = useAccess();
+  const locked = !canStartWorkout(access);
   const [starting, setStarting] = useState(false);
   const start = (demo: boolean) => {
+    // Demos are always free.
+    if (locked && !demo) return onUnlock();
     setStarting(true);
     onStart(demo);
   };
@@ -89,8 +96,25 @@ export function Setup({ exercise, target, facingMode, onTarget, onFacing, onStar
       </details>
 
       <div className="sticky-actions">
+        {access.kind === 'free' && (
+          <p className="free-note">
+            {access.ended
+              ? 'Your subscription has ended'
+              : access.left > 0
+                ? `${access.left} of ${FREE_WORKOUTS} free workouts left`
+                : `You've used your ${FREE_WORKOUTS} free workouts`}
+          </p>
+        )}
         <button className="btn primary big" onClick={() => start(false)} disabled={starting}>
-          <IconPlay /> Start {hold ? 'hold' : 'set'}
+          {locked ? (
+            <>
+              <IconLock /> {access.kind === 'recheck' ? 'Confirm subscription' : 'Subscribe to start'}
+            </>
+          ) : (
+            <>
+              <IconPlay /> Start {hold ? 'hold' : 'set'}
+            </>
+          )}
         </button>
         {hasDemo(exercise.id) && (
           <button className="btn ghost" onClick={() => start(true)} disabled={starting}>

@@ -10,6 +10,8 @@
  *   ALLOWED_ORIGINS     comma-separated origins allowed to call the API when the frontend is
  *                       hosted elsewhere (e.g. https://you.github.io)
  *   DEBRIEFS_PER_MINUTE per-IP rate limit (default 12)
+ *   LEMONSQUEEZY_STORE_ID, LEMONSQUEEZY_PRODUCT_ID
+ *                       the subscription that unlocks the app (see api/license.ts)
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { existsSync } from 'node:fs';
@@ -17,6 +19,7 @@ import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { licenseConfig } from '../api/license';
 import { createApp } from './app';
 import { createDebriefer, DEFAULT_MODEL } from './debrief';
 
@@ -53,9 +56,11 @@ const handler = createApp({
   model,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean),
   ratePerMinute: Number(process.env.DEBRIEFS_PER_MINUTE ?? 12),
+  license: licenseConfig(),
 });
 
 createServer((req, res) => void handler(req, res)).listen(port, () => {
   console.log(`TRACK AI Coach on http://localhost:${port}`);
   console.log(client ? `AI debrief: on (${model})` : 'AI debrief: off — set ANTHROPIC_API_KEY to enable it (the app falls back to on-device summaries)');
+  console.log(licenseConfig() ? 'License checks: on' : 'License checks: off — set LEMONSQUEEZY_STORE_ID and LEMONSQUEEZY_PRODUCT_ID for subscriptions');
 });

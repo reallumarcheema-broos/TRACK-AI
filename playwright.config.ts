@@ -20,9 +20,17 @@ export default defineConfig({
     { name: 'phone', use: { ...devices['Pixel 7'], browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'npx tsx server/index.ts',
+    // A build with a (test) checkout link, so the paid plan is on: free workouts, then the paywall.
+    command: 'npx vite build && npx tsx server/index.ts',
     port: PORT,
-    env: { PORT: String(PORT), ANTHROPIC_API_KEY: '' },
+    env: {
+      PORT: String(PORT),
+      ANTHROPIC_API_KEY: '',
+      VITE_CHECKOUT_URL: 'https://track-ai-test.lemonsqueezy.com/buy/test',
+      LEMONSQUEEZY_STORE_ID: '1',
+      LEMONSQUEEZY_PRODUCT_ID: '1',
+    },
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 });
