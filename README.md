@@ -112,6 +112,18 @@ The demo runs the video through the same MediaPipe tracking as the camera, so it
 coach does with you, and the app labels the people as AI-generated. Until the files exist, the cards
 show a plain tile and the demo button is hidden.
 
+## Put it online (GitHub Pages, free)
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the app and publishes it to
+GitHub Pages every time the default branch changes (you can also run it from the **Actions** tab).
+One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. The site then
+lives at `https://<owner>.github.io/<repo>/`, here **https://reallumarcheema-broos.github.io/TRACK-AI/**,
+with HTTPS, so the camera and **Add to Home Screen** work.
+
+GitHub Pages only hosts files, so that build turns the AI debrief off (`VITE_AI_DEBRIEF=off`) and every
+set gets the on-device summary. For AI debriefs, run the server below and point the site at it with
+`VITE_COACH_API_URL` instead.
+
 ## Production: app + AI debrief server
 
 ```bash
@@ -138,6 +150,7 @@ API with `VITE_COACH_API_URL` + `ALLOWED_ORIGINS` (see [`.env.example`](.env.exa
 | `ALLOWED_ORIGINS` | – | Origins allowed to call the API cross-origin |
 | `DEBRIEFS_PER_MINUTE` | `12` | Per-IP rate limit |
 | `VITE_COACH_API_URL` | same origin | (build time) where the frontend finds the API |
+| `VITE_AI_DEBRIEF` | on | (build time) `off` hides the AI debrief, for hosting without the server |
 
 **What the AI sees:** only the set's numbers (exercise, reps, form score, which faults happened how
 often) — never images. The server accepts only known exercise names and fault titles and substitutes its

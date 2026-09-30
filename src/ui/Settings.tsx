@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AI_DEBRIEF_ENABLED } from '../coach/debrief';
 import { listEnglishVoices } from '../coach/voice';
 import type { ModelQuality } from '../pose/detector';
 import type { Settings as SettingsT } from '../state/settings';
@@ -89,16 +90,18 @@ export function Settings({ settings, onChange, onTestVoice, onBack }: SettingsPr
           </div>
           <Switch label="Sound effects" checked={settings.sfx} onChange={(sfx) => onChange({ sfx })} />
         </div>
-        <div className="setting">
-          <div>
-            <div className="label">AI debrief after each set</div>
-            <div className="desc">
-              Sends your set's numbers (never video) to the TRACK AI server, which asks Claude for a short spoken debrief.
-              Falls back to the on-device summary when the server isn't available.
+        {AI_DEBRIEF_ENABLED && (
+          <div className="setting">
+            <div>
+              <div className="label">AI debrief after each set</div>
+              <div className="desc">
+                Sends your set's numbers (never video) to the TRACK AI server, which asks Claude for a short spoken debrief.
+                Falls back to the on-device summary when the server isn't available.
+              </div>
             </div>
+            <Switch label="AI debrief" checked={settings.aiDebrief} onChange={(aiDebrief) => onChange({ aiDebrief })} />
           </div>
-          <Switch label="AI debrief" checked={settings.aiDebrief} onChange={(aiDebrief) => onChange({ aiDebrief })} />
-        </div>
+        )}
       </section>
 
       <section className="card">

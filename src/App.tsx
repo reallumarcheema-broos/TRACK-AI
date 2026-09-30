@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SetResult } from './core/analyzer';
 import type { ExerciseId } from './core/exercise';
+import { AI_DEBRIEF_ENABLED } from './coach/debrief';
 import { WebAudioSfx } from './coach/sfx';
 import { NullEngine, Priority, VoiceQueue, WebSpeechEngine } from './coach/voice';
 import { EXERCISE_BY_ID } from './exercises';
@@ -205,7 +206,7 @@ export function App() {
         <Summary
           result={route.result}
           entryId={route.entryId}
-          aiDebrief={settings.aiDebrief}
+          aiDebrief={settings.aiDebrief && AI_DEBRIEF_ENABLED}
           voice={services.voice}
           onAgain={() => {
             unlockAudio();
