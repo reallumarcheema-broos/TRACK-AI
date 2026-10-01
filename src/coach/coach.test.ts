@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WorkoutAnalyzer } from '../core/analyzer';
 import type { ExerciseId } from '../core/exercise';
 import { EXERCISE_BY_ID } from '../exercises';
+import { ExerciseRecognizer } from '../exercises/recognizer';
 import { rng } from '../sim/skeleton';
 import { simulate, type SimOptions } from '../sim/simulator';
 import { Coach, type CoachLine } from './coach';
@@ -47,6 +48,52 @@ describe('Coach: announcing the set', () => {
       coach.handle(events, snapshot, fr.t);
     }
     expect(engine.spoken.map((s) => s.text)).toContain("Got you! 10 deadlifts. Let's go!");
+  });
+});
+
+describe('Coach: recognising the exercise', () => {
+  /** A recognising set, as the workout screen runs it. */
+  function recognisedSet(opts: SimOptions) {
+    const engine = new TimedEngine();
+    const voice = new VoiceQueue(engine, () => engine.now);
+    const recognizer = new ExerciseRecognizer();
+    const coach = new Coach(null, { target: null, voice, rand: () => 0 });
+    for (const fr of simulate(opts)) {
+      engine.advance(fr.t);
+      const { events, snapshot } = recognizer.process(fr.pose, fr.t, fr.aspect);
+      coach.handle(events, snapshot, fr.t);
+    }
+    return { spoken: engine.spoken.map((s) => s.text), recognizer };
+  }
+
+  it('says go, names the exercise with the reps so far, then keeps counting', () => {
+    const { spoken, recognizer } = recognisedSet({ exercise: 'lunge', reps: 4 });
+    expect(recognizer.exercise?.id).toBe('lunge');
+    const go = spoken.indexOf("Go! Start your exercise — I'll work out which one it is.");
+    const named = spoken.indexOf("Lunges — got it! That's one.");
+    expect(go).toBeGreaterThanOrEqual(0);
+    expect(named).toBeGreaterThan(go);
+    // The first rep is in the announcement, so counting carries on from two.
+    expect(spoken.slice(named + 1).some((t) => t.startsWith('Two.'))).toBe(true);
+    expect(spoken.some((t) => t.startsWith('One.'))).toBe(false);
+  });
+
+  it('names a plank and lets the timer run', () => {
+    const { spoken } = recognisedSet({ exercise: 'plank', holdSeconds: 14 });
+    expect(spoken).toContain("Plank — got it! The timer's running, hold it.");
+    expect(spoken).toContain('10 seconds.');
+  });
+
+  it('recognises shallow attempts and asks for depth instead of counting', () => {
+    const { spoken, recognizer } = recognisedSet({ exercise: 'squat', reps: [{ depth: 0.45 }, { depth: 0.45 }, { depth: 0.45 }] });
+    expect(recognizer.exercise?.id).toBe('squat');
+    const shallow = EXERCISE_BY_ID.squat.rep!.shallow.cues[0];
+    expect(spoken).toContain(`Squats — got it. ${shallow}`);
+  });
+
+  it("doesn't read out the on-screen prompts it has just said in other words", () => {
+    const { spoken } = recognisedSet({ exercise: 'squat', reps: 0, leadInSeconds: 6 });
+    expect(spoken.some((t) => t.startsWith('Start your exercise'))).toBe(false);
   });
 });
 

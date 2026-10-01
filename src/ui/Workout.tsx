@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { summarizeSet, WorkoutAnalyzer, type AnalyzerEvent, type AnalyzerSnapshot, type AnalyzerStatus, type SetResult } from '../core/analyzer';
-import type { ExerciseDef, Phase, Severity } from '../core/exercise';
+import { summarizeSet, WorkoutAnalyzer, type AnalyzerSnapshot, type AnalyzerStatus, type SetResult } from '../core/analyzer';
+import type { ExerciseDef, ExerciseId, Phase, Severity } from '../core/exercise';
 import type { View } from '../core/frame';
 import type { PoseInput } from '../core/landmarks';
 import { Coach, type CoachLine, type Tone } from '../coach/coach';
 import type { WebAudioSfx } from '../coach/sfx';
 import type { VoiceQueue } from '../coach/voice';
+import { EXERCISE_BY_ID, EXERCISES } from '../exercises';
+import { ExerciseRecognizer, type Recognized, type SessionEvent } from '../exercises/recognizer';
 import { CameraError, startCamera, stopCamera } from '../pose/camera';
 import { defaultQuality, getDetector, type LoadProgress, type PoseDetector } from '../pose/detector';
 import { drawDemoBackdrop, drawSkeleton } from '../pose/draw';
@@ -16,7 +18,10 @@ import type { Settings } from '../state/settings';
 import { IconAlert, IconCheck, IconClose, IconCoach, IconMute, IconSound } from './icons';
 
 export interface WorkoutProps {
-  exercise: ExerciseDef;
+  /** null: the coach works out the exercise from the first rep (and keeps that rep). */
+  exercise: ExerciseDef | null;
+  /** Without a set exercise, what the demo athlete or demo video performs. */
+  demoExercise?: ExerciseId;
   /** Reps or seconds; null = open-ended. */
   target: number | null;
   demo: boolean;
@@ -116,16 +121,20 @@ const toneOf = (faults: { severity: Severity }[]): Tone =>
 
 export function Workout(props: WorkoutProps) {
   const { exercise, target, demo, settings, voice, sfx } = props;
+  const demoId = exercise?.id ?? props.demoExercise ?? null;
   // The demo plays a video of an AI-generated person through the real pose tracking;
   // `?sim` swaps in the synthetic test athlete instead.
   const simDemo = demo && SIM_DEMO;
-  const videoDemo = demo && !simDemo ? demoVideo(exercise.id) : undefined;
+  const videoDemo = demo && !simDemo && demoId ? demoVideo(demoId) : undefined;
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const finishRef = useRef<() => void>(() => {});
+  const chooseRef = useRef<(id: ExerciseId) => void>(() => {});
   // Portrait until the camera reports its size; the test athlete films floor moves in landscape.
-  const [aspect, setAspect] = useState(() => (simDemo && exercise.horizontal ? 16 / 9 : 9 / 16));
+  const [aspect, setAspect] = useState(() => (simDemo && demoId && EXERCISE_BY_ID[demoId].horizontal ? 16 / 9 : 9 / 16));
+  /** The exercise being coached: set up front, or once recognised. */
+  const [current, setCurrent] = useState<ExerciseDef | null>(exercise);
   const stage = useStageSize(wrapRef, aspect);
   const [load, setLoad] = useState<Load>({ state: 'loading', message: demo ? 'Preparing the demo…' : 'Starting the camera…', fraction: null });
   const [hud, setHud] = useState<Hud>(INITIAL_HUD);
@@ -162,7 +171,10 @@ export function Workout(props: WorkoutProps) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const wake = new ScreenWakeLock();
-    const analyzer = new WorkoutAnalyzer(exercise);
+    // Without a set exercise, every exercise's analyzer watches until one recognises the movement.
+    const recognizer = exercise ? null : new ExerciseRecognizer();
+    let analyzer: WorkoutAnalyzer | null = exercise ? new WorkoutAnalyzer(exercise) : null;
+    let def: ExerciseDef | null = exercise;
     let latestLine: CoachLine | null = null;
     const coach = new Coach(exercise, {
       target,
@@ -193,8 +205,28 @@ export function Workout(props: WorkoutProps) {
       void wake.disable();
     };
 
+    /** Switch to the recognised (or chosen) exercise; reps counted while working it out stay. */
+    const adopt = (e: Recognized) => {
+      def = e.def;
+      analyzer = recognizer!.analyzer;
+      repTones.splice(0, repTones.length, ...analyzer!.reps.map((r) => toneOf(r.faults)));
+      setCurrent(e.def);
+    };
+    chooseRef.current = (id) => {
+      const e = recognizer?.choose(id);
+      if (!e || disposed) return;
+      adopt(e);
+      coach.handle([e], recognizer!.chosen!.snapshot!, performance.now());
+    };
+
     const finish = () => {
       if (disposed) return;
+      if (!analyzer) {
+        // Nothing recognised: there's no set to summarise.
+        dispose();
+        propsRef.current.onExit();
+        return;
+      }
       finished = true;
       const result = summarizeSet(analyzer, { startedAt, endT: performance.now(), target });
       dispose();
@@ -217,9 +249,9 @@ export function Workout(props: WorkoutProps) {
       }
     };
 
-    const updateHud = (s: AnalyzerSnapshot, events: AnalyzerEvent[], now: number) => {
+    const updateHud = (s: AnalyzerSnapshot, events: SessionEvent[], now: number) => {
       for (const e of events) {
-        if (e.type === 'ready') goUntil = now + 1400;
+        if (e.type === 'ready' || e.type === 'watching') goUntil = now + 1400;
         if (e.type === 'rep') {
           const tone = toneOf(e.rep.faults);
           repTones.push(tone);
@@ -227,7 +259,7 @@ export function Workout(props: WorkoutProps) {
         }
         if (e.type === 'fault' && !e.midRep) {
           // A post-rep fault (e.g. no lockout) downgrades the last rep's dot.
-          const last = analyzer.reps[analyzer.reps.length - 1];
+          const last = analyzer?.reps[analyzer.reps.length - 1];
           if (last) repTones[repTones.length - 1] = toneOf(last.faults);
         }
       }
@@ -271,10 +303,10 @@ export function Workout(props: WorkoutProps) {
     const checkEnd = (s: AnalyzerSnapshot, now: number) => {
       // Target reached: the coach has said "Done!" — stop counting and show the summary shortly.
       if (coach.targetReached && finishAt === null) finishAt = now + 1600;
-      if (s.status !== 'active') return;
+      if (!def || s.status !== 'active') return;
       if (s.phase !== 'start' || s.holding) lastActiveAt = now;
       const didSomething = s.reps > 0 || s.holdMs > 3000;
-      const patience = exercise.kind === 'hold' ? 12000 : target ? 45000 : 30000;
+      const patience = def.kind === 'hold' ? 12000 : target ? 45000 : 30000;
       if (didSomething && now - lastActiveAt > patience) finish();
     };
 
@@ -314,7 +346,8 @@ export function Workout(props: WorkoutProps) {
         analyzed = true;
       }
       if (analyzed) {
-        const { events, snapshot } = analyzer.process(pose, now, aspectNow);
+        const { events, snapshot } = recognizer ? recognizer.process(pose, now, aspectNow) : analyzer!.process(pose, now, aspectNow);
+        for (const e of events) if (e.type === 'recognized') adopt(e);
         coach.handle(events, snapshot, now);
         draw(snapshot, now);
         updateHud(snapshot, events, now);
@@ -339,12 +372,12 @@ export function Workout(props: WorkoutProps) {
       void wake.enable();
       try {
         if (demo && !simDemo && !videoDemo) throw new Error('There is no demo video for this exercise yet');
-        if (simDemo) {
+        if (simDemo && demoId) {
           // Test-only code, so it downloads only when asked for.
           const { defaultCamera, demoScript, simulate } = await import('../sim/simulator');
           if (disposed) return;
-          demoFrames = simulate({ ...demoScript(exercise.id, target ?? 0), absentSeconds: 1.2 });
-          const cam = defaultCamera(exercise.id);
+          demoFrames = simulate({ ...demoScript(demoId, target ?? 0), absentSeconds: 1.2 });
+          const cam = defaultCamera(demoId);
           canvas.width = cam.width;
           canvas.height = cam.height;
           aspectNow = cam.width / cam.height;
@@ -391,12 +424,12 @@ export function Workout(props: WorkoutProps) {
     // The session is deliberately created once per mount (and per retry).
   }, [attempt]);
 
-  const hold = exercise.kind === 'hold';
+  const hold = current?.kind === 'hold';
   const active = hud.status === 'active';
   const showHint = !hud.go && !!hud.hint;
   const fault = hud.faults[0];
   const targetLabel = target ? (hold ? `/${target}s` : `/${target}`) : '';
-  const recommended = hud.view === exercise.camera.recommended;
+  const recommended = !current || hud.view === current.camera.recommended;
 
   const exit = () => {
     voice.clear();
@@ -426,7 +459,21 @@ export function Workout(props: WorkoutProps) {
             <IconClose />
           </button>
           <div className="hud-title">
-            <span>{exercise.name}</span>
+            {exercise ? (
+              <span>{exercise.name}</span>
+            ) : (
+              // Recognised automatically; tap to correct it.
+              <span className="ex-pick">
+                <select value={current?.id ?? ''} onChange={(e) => chooseRef.current(e.target.value as ExerciseId)} aria-label="Exercise">
+                  {!current && <option value="">Any exercise</option>}
+                  {EXERCISES.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            )}
             {hud.view && (
               <span className="view" style={{ color: recommended ? 'var(--good)' : 'var(--warn)' }}>
                 {VIEW_NAME[hud.view]}
@@ -448,16 +495,16 @@ export function Workout(props: WorkoutProps) {
             showHint && (
               <div className="hint" role="status" aria-live="polite">
                 {hud.hint}
-                {!active && hud.status === 'positioning' && hud.hint === 'Turn sideways to the camera' && (
-                  <span className="sub">{exercise.camera.why}</span>
+                {!active && hud.status === 'positioning' && hud.hint === 'Turn sideways to the camera' && current && (
+                  <span className="sub">{current.camera.why}</span>
                 )}
               </div>
             )
           )}
-          {active && !hold && exercise.rep && (
-            <div className={`gauge ${exercise.rep.direction}${hud.progress >= 1 ? ' hit' : ''}`} aria-hidden="true">
+          {active && !hold && current?.rep && (
+            <div className={`gauge ${current.rep.direction}${hud.progress >= 1 ? ' hit' : ''}`} aria-hidden="true">
               <div className="fill" style={{ height: `${(Math.min(1.3, hud.progress) / 1.3) * 100}%` }} />
-              <div className="mark" style={{ [exercise.rep.direction === 'down' ? 'top' : 'bottom']: `${(1 / 1.3) * 100}%` }} />
+              <div className="mark" style={{ [current.rep.direction === 'down' ? 'top' : 'bottom']: `${(1 / 1.3) * 100}%` }} />
             </div>
           )}
         </div>
@@ -533,7 +580,9 @@ export function Workout(props: WorkoutProps) {
             <p className="muted" style={{ fontSize: 14 }}>
               {demo
                 ? 'The coach tracks the person in the video exactly like it tracks you through your camera.'
-                : 'Prop your phone up and step back so your whole body is in view.'}
+                : exercise
+                  ? 'Prop your phone up and step back so your whole body is in view.'
+                  : 'Prop your phone up, step back so your whole body is in view, then start your exercise. The coach recognises it.'}
             </p>
           </div>
         </div>

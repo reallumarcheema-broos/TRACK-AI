@@ -828,7 +828,7 @@ export const ARTICLES: Article[] = [
       },
       { h2: 'Side-on or facing the camera?' },
       {
-        p: 'A side view shows depth and angles: how low your [squat](/guides/squat) goes, whether your back stays flat in a [Romanian deadlift](/guides/rdl), and whether your hips sag. A front view shows what happens left to right: knees caving in, uneven arms in a [shoulder press](/guides/press), or elbows drifting in a [curl](/guides/curl). Each exercise’s setup screen in TRACK AI tells you which view it prefers.',
+        p: 'A side view shows depth and angles: how low your [squat](/guides/squat) goes, whether your back stays flat in a [Romanian deadlift](/guides/rdl), and whether your hips sag. A front view shows what happens left to right: knees caving in, uneven arms in a [shoulder press](/guides/press), or elbows drifting in a [curl](/guides/curl). If the TRACK AI coach needs a different view, it tells you, for example to turn sideways for push-ups.',
       },
       { h2: 'Setup for each exercise' },
       {
@@ -871,13 +871,13 @@ export const ARTICLES: Article[] = [
           'Hold still for a second at the start so it can calibrate to your body.',
         ],
       },
-      { tip: 'Ready? [Pick an exercise](/) and start a set. The coach guides you into position before the first rep.' },
+      { tip: 'Ready? [Open the coach](/), prop up your phone and start moving. It recognises the exercise and guides you into position before the first rep.' },
     ],
   },
   {
     slug: 'how-ai-form-tracking-works',
     title: 'How AI form tracking works',
-    summary: 'How TRACK AI turns a phone camera into a coach: body tracking, joint angles, rep counting, form checks and scores, and why your video never leaves your device.',
+    summary: 'How TRACK AI turns a phone camera into a coach: body tracking, joint angles, recognising your exercise, rep counting, form checks and scores, and why your video never leaves your device.',
     published: '2026-09-30',
     blocks: [
       {
@@ -895,19 +895,23 @@ export const ARTICLES: Article[] = [
       {
         p: 'From those points the coach measures what matters for each exercise: the angle of your knees and hips in a [squat](/guides/squat), how far your hips travel back in a [Romanian deadlift](/guides/rdl), your elbow angle in a [curl](/guides/curl), or the line from your shoulders to your ankles in a [plank](/guides/plank). It also works out whether it’s seeing you from the side, the front or an angle, and only checks what that view can reliably show.',
       },
-      { h2: '4. Counting reps' },
+      { h2: '4. Recognising your exercise' },
+      {
+        p: 'You don’t pick an exercise. When you start moving, the coach watches with all eight of its exercises in mind at once. As soon as one of them can count your rep, it checks that the shape of the movement fits: knees bending or staying nearly straight, one leg ahead of the other or both together, arms going overhead or bending at the elbow, standing up or lying down. That’s how it tells a squat from a lunge, or a press from a jumping jack, usually within your first rep, and that rep already counts. If it ever guesses wrong, you can correct it with one tap.',
+      },
+      { h2: '5. Counting reps' },
       {
         p: 'A rep counts when you move from your start position to the target depth and back again. Half reps don’t count, and small wobbles at the top or bottom can’t trigger a double count. That’s why the numbers match what a strict coach would count.',
       },
-      { h2: '5. Checking your form' },
+      { h2: '6. Checking your form' },
       {
         p: 'Each exercise has its own form rules: knees caving in, back rounding, hips sagging, swinging the weight, leaning back in a press, and more. The coach only flags a fault when it sees it consistently, not on a single noisy frame, so it corrects you without nagging.',
       },
-      { h2: '6. Coaching you out loud' },
+      { h2: '7. Coaching you out loud' },
       {
         p: 'Cues are spoken by your device’s own voice: short corrections like “Chest up!”, rep counts, and encouragement when you fix something. Important corrections jump the queue; routine counting waits its turn.',
       },
-      { h2: '7. Scoring the set' },
+      { h2: '8. Scoring the set' },
       {
         p: 'Every rep starts with a score of 100. A minor fault takes a few points off and a major one takes off a lot more. Your form score for the set is the average of your reps, so one messy rep doesn’t ruin a good set, but a habit shows up clearly. For a plank, the score is the share of the hold you spent without a major fault. After the set, the summary tells you the one thing to work on next time.',
       },

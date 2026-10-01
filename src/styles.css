@@ -554,6 +554,12 @@ input[type='range'] {
   margin-top: 4px;
 }
 
+.works-with {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 34em;
+}
+
 .hero-visual {
   position: relative;
   min-height: 400px;
@@ -785,60 +791,6 @@ input[type='range'] {
 
 .section-head h2 {
   font-size: clamp(40px, 11vw, 64px);
-}
-
-.ex-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.ex-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  text-align: left;
-  padding: 10px 10px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  box-shadow: var(--shadow);
-  color: var(--ink);
-  cursor: pointer;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.ex-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-.ex-card:active {
-  transform: scale(0.98);
-}
-
-.ex-card h3 {
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: 26px;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  margin-top: 6px;
-  padding: 0 4px;
-}
-
-.ex-card .muscles {
-  font-size: 12.5px;
-  color: var(--muted);
-  padding: 0 4px;
-}
-
-.ex-card .badge {
-  margin: 2px 4px 0;
 }
 
 .steps {
@@ -1466,6 +1418,53 @@ details.tips ul {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The recognised exercise, as a quiet drop-down: tap it to correct a wrong guess. */
+.ex-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ex-pick select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 22px 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.ex-pick::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -5px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.ex-pick select:focus-visible {
+  outline: 2px solid var(--bronze-light);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.ex-pick option {
+  color: var(--ink);
 }
 
 .hud-title .view {

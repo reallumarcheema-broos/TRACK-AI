@@ -22,6 +22,7 @@ export const PHRASES = {
   idleFirst: ["Keep going when you're ready.", 'Take a breath, then keep going.'],
   idleLater: ["Still with me? Let's finish strong.", "Whenever you're ready — let's finish the set."],
   countdown: ['Five', 'Four', 'Three', 'Two', 'One'],
+  watching: ["Go! Start your exercise — I'll work out which one it is.", "I can see you. Start your exercise whenever you're ready!"],
 } as const;
 
 const NUMBER_WORDS = [

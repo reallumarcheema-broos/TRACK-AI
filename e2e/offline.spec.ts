@@ -32,8 +32,7 @@ test('after one visit the whole app works offline', async ({ page }) => {
 
   await page.reload();
   await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
-  await page.getByRole('button', { name: /Squat/ }).click();
-  await page.getByRole('button', { name: /Start set/ }).click();
+  await page.getByRole('button', { name: 'Start training' }).click();
   // The workout screen downloads on demand, so it must have been saved on the first visit.
   // (This browser has no camera, so the coach then asks for one.)
   await expect(page.locator('.workout .hud')).toBeVisible();

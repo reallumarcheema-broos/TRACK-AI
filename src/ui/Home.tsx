@@ -1,15 +1,10 @@
 import { useMemo, type ReactNode } from 'react';
-import type { ExerciseId } from '../core/exercise';
-import { EXERCISES } from '../exercises';
 import { hasAiPeople, heroPhoto } from '../media/people';
 import { loadHistory } from '../state/history';
 import { FEATURED } from '../site/featured';
 import { siteLinks } from '../site/site';
 import { Ad } from './Ad';
-import { ExerciseArt } from './ExerciseArt';
 import { IconChart, IconCoach, IconHistory, IconLock, IconPlay, IconSettings, IconSpark, IconTarget, IconWave, Logo } from './icons';
-
-const VIEW_LABEL = { side: 'Side-on', front: 'Facing camera', diagonal: 'Angled' } as const;
 
 const FEATURES: { icon: ReactNode; title: string; text: string }[] = [
   { icon: <IconTarget />, title: 'Counts every rep', text: "Half reps don't count" },
@@ -20,7 +15,7 @@ const FEATURES: { icon: ReactNode; title: string; text: string }[] = [
 
 const STEPS = [
   { title: 'Prop it up', text: '2–3 m away, your whole body in view' },
-  { title: 'Start moving', text: 'Hold still for a second, then go' },
+  { title: 'Start moving', text: 'Hold still for a second, then go. It recognises the exercise' },
   { title: 'Listen', text: 'Reps, cues and a debrief, out loud' },
 ];
 
@@ -70,7 +65,7 @@ function useScoreTrend(): { scores: number[]; example: boolean } {
   }, []);
 }
 
-export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () => void; onSettings: () => void }) {
+export function Home(props: { onStart: () => void; onHistory: () => void; onSettings: () => void }) {
   const hero = heroPhoto();
   const trend = useScoreTrend();
   const latest = trend.scores[trend.scores.length - 1];
@@ -86,7 +81,6 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
           </span>
         </div>
         <nav className="nav-links" aria-label="Sections">
-          <button onClick={() => scrollTo('exercises')}>Exercises</button>
           <button onClick={() => scrollTo('how')}>How it works</button>
           <a href={`${BASE}guides`}>Guides</a>
           <button onClick={() => scrollTo('privacy')}>Privacy</button>
@@ -111,7 +105,7 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
             your phone and move.
           </p>
           <div className="cta-row">
-            <button className="btn primary" onClick={() => scrollTo('exercises')}>
+            <button className="btn primary" onClick={props.onStart}>
               <IconSpark /> Start training
             </button>
             <button className="btn-play" onClick={() => scrollTo('how')}>
@@ -121,6 +115,10 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
               See how it works
             </button>
           </div>
+          <p className="works-with">
+            No need to pick an exercise: it recognises squats, push-ups, lunges, Romanian deadlifts, bicep curls,
+            shoulder presses, jumping jacks and planks.
+          </p>
         </div>
 
         <div className="hero-visual">
@@ -163,23 +161,6 @@ export function Home(props: { onPick: (id: ExerciseId) => void; onHistory: () =>
             </div>
           </div>
         ))}
-      </section>
-
-      <section id="exercises" className="section" aria-labelledby="pick">
-        <div className="section-head">
-          <span className="eyebrow">Pick your movement</span>
-          <h2 id="pick">{EXERCISES.length} moves. One coach.</h2>
-        </div>
-        <div className="ex-grid">
-          {EXERCISES.map((ex) => (
-            <button key={ex.id} className="ex-card" onClick={() => props.onPick(ex.id)}>
-              <ExerciseArt id={ex.id} />
-              <h3>{ex.name}</h3>
-              <span className="muscles">{ex.muscles}</span>
-              <span className="badge">{VIEW_LABEL[ex.camera.recommended]}</span>
-            </button>
-          ))}
-        </div>
       </section>
 
       <section id="how" className="section" aria-labelledby="how-title">

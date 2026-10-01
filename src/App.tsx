@@ -14,11 +14,16 @@ import { Settings } from './ui/Settings';
 import { Setup } from './ui/Setup';
 import { Summary } from './ui/Summary';
 
+/**
+ * A workout with `id: null` recognises the exercise by itself (Start training on the home page);
+ * one with an id is that exercise, set up first (the exercise guides link there).
+ * `demoExercise` is what the demo athlete performs in a recognising demo.
+ */
 type Route =
   | { name: 'home' }
   | { name: 'setup'; id: ExerciseId }
-  | { name: 'workout'; id: ExerciseId; demo: boolean; key: number }
-  | { name: 'summary'; id: ExerciseId; result: SetResult; entryId: string; demo: boolean }
+  | { name: 'workout'; id: ExerciseId | null; demo: boolean; key: number; demoExercise?: ExerciseId }
+  | { name: 'summary'; id: ExerciseId | null; result: SetResult; entryId: string; demo: boolean; demoExercise?: ExerciseId }
   | { name: 'history' }
   | { name: 'settings' };
 
@@ -89,6 +94,10 @@ function initialRoutes(): Route[] {
   const params = new URLSearchParams(location.search);
   const demo = params.get('demo') as ExerciseId | null;
   const ex = params.get('exercise') as ExerciseId | null;
+  // `?demo=lunge&auto` shows the demo athlete through exercise recognition.
+  if (demo && demo in EXERCISE_BY_ID && params.has('auto')) {
+    return hasDemo(demo) ? [{ name: 'home' }, { name: 'workout', id: null, demo: true, demoExercise: demo, key: 0 }] : [{ name: 'home' }];
+  }
   if (demo && demo in EXERCISE_BY_ID) {
     const setup: Route[] = [{ name: 'home' }, { name: 'setup', id: demo }];
     return hasDemo(demo) ? [...setup, { name: 'workout', id: demo, demo: true, key: 0 }] : setup;
@@ -156,7 +165,16 @@ export function App() {
 
   switch (route.name) {
     case 'home':
-      return <Home onPick={(id) => push({ name: 'setup', id })} onHistory={() => push({ name: 'history' })} onSettings={() => push({ name: 'settings' })} />;
+      return (
+        <Home
+          onStart={() => {
+            unlockAudio();
+            push({ name: 'workout', id: null, demo: false, key: Date.now() });
+          }}
+          onHistory={() => push({ name: 'history' })}
+          onSettings={() => push({ name: 'settings' })}
+        />
+      );
 
     case 'setup': {
       const ex = EXERCISE_BY_ID[route.id];
@@ -178,11 +196,14 @@ export function App() {
 
     case 'workout': {
       if (!Workout) return <WorkoutPending failed={workoutFailed} demo={route.demo} onBack={back} />;
-      const target = targetFor(route.id);
+      // Recognised exercises run as open sets: the coach counts until you stop.
+      const target = route.id ? targetFor(route.id) : 0;
+      const id = route.id;
       return (
         <Workout
           key={route.key}
-          exercise={EXERCISE_BY_ID[route.id]}
+          exercise={id ? EXERCISE_BY_ID[id] : null}
+          demoExercise={route.demoExercise}
           target={target > 0 ? target : null}
           demo={route.demo}
           settings={settings}
@@ -190,12 +211,12 @@ export function App() {
           sfx={services.sfx}
           onToggleVoice={() => updateSettings({ voice: !settings.voice })}
           onExit={back}
-          onDemoInstead={hasDemo(route.id) ? () => replace({ name: 'workout', id: route.id, demo: true, key: Date.now() }) : undefined}
+          onDemoInstead={id && hasDemo(id) ? () => replace({ name: 'workout', id, demo: true, key: Date.now() }) : undefined}
           onFinish={(result, demo) => {
             const entry = entryFromResult(result, demo);
             const didSomething = result.reps.length > 0 || result.partialReps.length > 0 || result.holdMs > 3000;
             if (didSomething) addHistory(entry);
-            replace({ name: 'summary', id: route.id, result, entryId: entry.id, demo });
+            replace({ name: 'summary', id, result, entryId: entry.id, demo, demoExercise: route.demoExercise });
           }}
         />
       );
@@ -210,7 +231,7 @@ export function App() {
           voice={services.voice}
           onAgain={() => {
             unlockAudio();
-            replace({ name: 'workout', id: route.id, demo: route.demo, key: Date.now() });
+            replace({ name: 'workout', id: route.id, demo: route.demo, demoExercise: route.demoExercise, key: Date.now() });
           }}
           onHome={home}
           onHistory={() => push({ name: 'history' })}

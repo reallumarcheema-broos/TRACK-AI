@@ -36,6 +36,16 @@ test.describe('small phone', () => {
   });
 });
 
+test.describe('small phone, exercise recognised', () => {
+  test.use({ viewport: { width: 360, height: 740 } });
+
+  test('the exercise drop-down and the HUD fit on screen', async ({ page }) => {
+    await page.goto('/?demo=rdl&auto&sim');
+    await expect(page.getByRole('combobox', { name: 'Exercise' })).toHaveValue('rdl', { timeout: 45_000 });
+    expect(await hudProblems(page)).toEqual([]);
+  });
+});
+
 test.describe('landscape phone', () => {
   test.use({ viewport: { width: 844, height: 390 } });
 

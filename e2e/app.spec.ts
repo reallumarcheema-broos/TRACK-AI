@@ -1,17 +1,40 @@
 import { expect, test } from '@playwright/test';
 
-test('home lists every exercise', async ({ page }) => {
+test('home starts training without picking an exercise, and says which ones it recognises', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
-  for (const name of ['Squat', 'Push-up', 'Lunge', 'Romanian Deadlift', 'Bicep Curl', 'Shoulder Press', 'Jumping Jacks', 'Plank']) {
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible();
+  await expect(page.getByText('Pick your movement')).toHaveCount(0);
+  const worksWith = page.locator('.works-with');
+  for (const name of ['squats', 'push-ups', 'lunges', 'Romanian deadlifts', 'bicep curls', 'shoulder presses', 'jumping jacks', 'planks']) {
+    await expect(worksWith).toContainText(name);
   }
+});
+
+// The demo athlete does lunges and nobody tells the coach which exercise it is.
+test('the coach recognises the exercise by itself and keeps the reps', async ({ page }) => {
+  await page.goto('/?demo=lunge&auto&sim');
+  const exercise = page.getByRole('combobox', { name: 'Exercise' });
+  await expect(exercise).toHaveValue('');
+  await expect(page.locator('.hint')).toContainText(/recognise|working out/i, { timeout: 20_000 });
+  await expect(exercise).toHaveValue('lunge', { timeout: 30_000 });
+  await expect(page.locator('.caption')).toContainText("Lunges — got it! That's one.");
+  await expect(page.locator('.counter .value')).toHaveText('2', { timeout: 15_000 });
+
+  // A wrong guess can be corrected; the set carries on as the other exercise.
+  await exercise.selectOption('squat');
+  await expect(page.locator('.caption')).toContainText(/Squats — got it/);
+  await exercise.selectOption('lunge');
+
+  await page.getByRole('button', { name: 'Finish set' }).click();
+  await expect(page.getByText('Lunge · set complete')).toBeVisible();
+  await page.getByRole('button', { name: /History/ }).click();
+  await expect(page.locator('.list-item').first()).toContainText('Lunge');
 });
 
 // `?sim` swaps the demo video for the synthetic test athlete, so these runs are deterministic.
 test('a demo set is tracked, coached and summarised', async ({ page }) => {
-  await page.goto('/?sim');
-  await page.getByRole('button', { name: /Jumping Jacks/ }).click();
+  // A chosen exercise (the form guides link here) can have a rep target.
+  await page.goto('/?exercise=jumping_jack&sim');
   await page.getByRole('button', { name: '10', exact: true }).click();
   await page.getByRole('button', { name: /Watch a demo/ }).click();
 
@@ -52,8 +75,8 @@ test('settings persist across reloads', async ({ page }) => {
 
 test('the browser back button walks back through screens', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Squat/ }).click();
-  await expect(page.getByRole('heading', { name: 'Squat' })).toBeVisible();
+  await page.getByRole('button', { name: 'Start training' }).click();
+  await expect(page.locator('.workout')).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { name: /your ai trainer/i })).toBeVisible();
 });

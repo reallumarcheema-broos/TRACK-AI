@@ -16,6 +16,10 @@ breakdown.
 
 - **Real-time body tracking on the device** with MediaPipe Pose (33 landmarks). No video ever leaves the
   phone; a Content-Security-Policy even blocks MediaPipe's own usage-metrics beacon.
+- **Recognises the exercise by itself**: press **Start training** and move. The coach works out which
+  of its eight exercises you're doing from the first rep (that rep counts), checks the movement's shape
+  to tell look-alikes apart (squat or lunge, press or jumping jack, push-up or plank) and lets you
+  correct a wrong guess with one tap ([how](#how-it-recognises-the-exercise)).
 - **Rep counting** that rejects half reps ("that one didn't count — go deeper"), catches reps that never
   lock out and works with the phone side-on, facing you or at an angle.
 - **Form checks** per exercise, highlighted on your skeleton in red and spoken as short, actionable cues.
@@ -58,9 +62,11 @@ npm run fetch-models     # optional: bundle the pose models for offline use (els
 npm run dev              # http://localhost:5173 — works with a laptop webcam
 ```
 
-Open the app, pick an exercise and **Start set**. Once [AI demo videos](#ai-people) are added, a
-**Watch a demo** button (no camera needed) appears too; `http://localhost:5173/?demo=squat` jumps
-straight to one.
+Open the app and press **Start training**: the coach recognises the exercise from your first rep.
+To set up one exercise with a rep target instead, open `http://localhost:5173/?exercise=squat` (the
+form guides link there). Once [AI demo videos](#ai-people) are added, a **Watch a demo** button (no
+camera needed) appears too; `http://localhost:5173/?demo=squat` jumps straight to one, and
+`?demo=squat&auto&sim` shows the synthetic test athlete being recognised.
 
 The dev server proxies `/api` to `localhost:8787`; to try AI debriefs while developing, run
 `ANTHROPIC_API_KEY=sk-ant-... npm run dev:server` in a second terminal.
@@ -227,6 +233,29 @@ A few design decisions worth knowing:
 - **Back rounding** can't be seen directly (MediaPipe has no spine points), so it's inferred from the
   head dropping off the line of the torso and the shoulder–hip distance shrinking, side-on only.
 
+### How it recognises the exercise
+
+**Start training** runs every exercise's own analyzer on the same frames
+([`src/exercises/recognizer.ts`](src/exercises/recognizer.ts)). Each one calibrates when the athlete
+holds still in its start position and counts reps exactly as it would if picked, so the first to
+count a rep (or, for the plank, to time five steady seconds with no push-up under way) nominates its
+exercise. Some movements can be counted by two analyzers (a squat bends the knees like a lunge, a
+jumping jack raises the arms like a curl), so the movement since that rep has to fit too:
+
+| Measurement | Tells apart |
+| --- | --- |
+| Shoulders→ankles angle in 3D (works from any view) | standing exercises vs push-ups and planks |
+| Difference between the two thighs | lunge (≥ 35°) vs squat |
+| Most-bent knee | squat or lunge (< 125°) vs deadlift (knees stay straighter) |
+| Wrists above the shoulders, and elbow bend | press (hands overhead, elbows bend) vs jumping jack (straight arms) vs curl |
+
+The winning analyzer keeps what it already counted, the others keep running so a wrong guess can be
+corrected from the drop-down, and two shallow attempts identify an exercise before any rep counts.
+When nothing fits for a while, the guidance says why: the camera angle rules it out (push-ups and
+planks need a side view, deadlifts too, jumping jacks a front view) or nobody has held still yet.
+Thresholds sit halfway between what the simulator produces for each exercise, with noise and form
+faults included; `recognizer.test.ts` covers every exercise from every supported view.
+
 ## Development
 
 ```bash
@@ -267,6 +296,9 @@ e2e/          Playwright tests
 - It's a single phone camera: joints hidden behind the body are estimated, so use the recommended view
   for the checks you care most about. Thresholds were tuned on the simulator and checked against real
   MediaPipe output; expect to fine-tune them with real athletes (use `?debug`).
+- Exercise recognition knows the eight exercises above; anything else isn't recognised (the coach says
+  so). A deadlift done with deeply bent knees looks like a squat to it; tap the exercise name to
+  correct it.
 - Speech uses your device's built-in voices, so quality varies by phone (iOS "Enhanced" voices and
   Chrome's Google voices sound best — pick one in Settings).
 - TRACK AI Coach gives general fitness feedback, not medical advice.

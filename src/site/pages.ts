@@ -251,9 +251,10 @@ function aboutPage(config: SiteConfig, base: string) {
   const body = `
 <span class="eyebrow">About</span>
 <h1>An AI trainer in your phone</h1>
-<p class="lead">${SITE_NAME} is a free personal trainer that runs in your web browser. Prop up your phone, pick an exercise and it counts your reps, checks your form and talks you through the set, out loud.</p>
+<p class="lead">${SITE_NAME} is a free personal trainer that runs in your web browser. Prop up your phone and start moving: it recognises the exercise, counts your reps, checks your form and talks you through the set, out loud.</p>
 <h2>How it works</h2>
 <p>The coach uses your camera and an on-device body-tracking model (Google's MediaPipe Pose) that finds 33 points on your body about thirty times a second. From those points it measures joint angles, such as how deep your squat goes or whether your hips sag in a plank, and compares every rep with good form for that exercise.</p>
+<p>There's nothing to choose before you start. The coach works out which of its eight exercises you're doing from your first rep, and that rep already counts. If it ever guesses wrong, tap the exercise name at the top of the screen to correct it.</p>
 <p>When something slips, it tells you straight away with a short spoken cue, the way a coach standing next to you would. After the set you get a summary: clean reps, a form score and the one thing to work on next time.</p>
 <h2>Private by design</h2>
 <p>All of the tracking happens on your device. Your camera video is never uploaded, recorded or stored, and you don't need an account. Your workout history stays in your browser.</p>

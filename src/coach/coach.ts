@@ -3,8 +3,9 @@
  * good trainer would — count every rep, correct faults the moment they happen (without
  * nagging), notice when form improves, and keep the athlete going to the end of the set.
  */
-import type { AnalyzerEvent, AnalyzerSnapshot, RepResult } from '../core/analyzer';
+import type { AnalyzerSnapshot, RepResult } from '../core/analyzer';
 import type { Cue, ExerciseDef } from '../core/exercise';
+import { RECOGNIZER_HINTS, type SessionEvent } from '../exercises/recognizer';
 import { countWord, Picker, PHRASES } from './phrases';
 import { Priority, type VoiceQueue } from './voice';
 
@@ -39,8 +40,8 @@ const CORRECTION_GAP_MS = 1800;
 const HINT_REPEAT_MS = 8000;
 /** Minimum gap between two different setup hints. */
 const HINT_GAP_MS = 2500;
-/** Hints that are too brief to be worth saying out loud. */
-const SILENT_HINTS = new Set(['Hold it…']);
+/** Hints that are too brief to be worth saying out loud, or that the coach has just said in other words. */
+const SILENT_HINTS = new Set<string>(['Hold it…', RECOGNIZER_HINTS.start, RECOGNIZER_HINTS.keepGoing]);
 
 const speakable = (s: string) => s.replace(/…/g, '.');
 
@@ -63,8 +64,11 @@ export class Coach {
   private countdownSaid = 0;
   private started = false;
 
+  /**
+   * `def` is null while the exercise is still being recognised; a `recognized` event sets it.
+   */
   constructor(
-    private readonly def: ExerciseDef,
+    private def: ExerciseDef | null,
     private readonly opts: CoachOptions,
   ) {
     this.picker = new Picker(opts.rand);
@@ -76,22 +80,29 @@ export class Coach {
   }
 
   /** Feed every frame's analyzer output. `t` is in ms. */
-  handle(events: AnalyzerEvent[], snapshot: AnalyzerSnapshot, t: number): void {
+  handle(events: SessionEvent[], snapshot: AnalyzerSnapshot, t: number): void {
     for (const e of events) this.onEvent(e, t);
     this.updateHint(snapshot, t);
-    if (this.def.kind === 'hold') this.updateHold(snapshot, t);
+    if (this.def?.kind === 'hold') this.updateHold(snapshot, t);
     this.opts.voice.tick();
   }
 
-  private onEvent(e: AnalyzerEvent, t: number): void {
+  private onEvent(e: SessionEvent, t: number): void {
     switch (e.type) {
+      case 'watching':
+        this.hint = null;
+        this.say(this.picker.pick(PHRASES.watching), 'good', t, { priority: Priority.urgent, interrupt: true, ttlMs: 4000 });
+        break;
+      case 'recognized':
+        this.onRecognized(e.def, e.reps, e.holdMs, t);
+        break;
       case 'status':
         this.hint = e.status === 'active' ? null : e.hint;
         break;
       case 'ready':
         this.started = true;
         this.hint = null;
-        if (this.def.kind === 'hold') break; // announced on holdStart
+        if (!this.def || this.def.kind === 'hold') break; // holds are announced on holdStart
         this.say(
           this.picker.pick(this.target ? PHRASES.readyWithTarget(this.target, this.def.repNoun ?? 'reps') : PHRASES.ready),
           'good',
@@ -137,7 +148,7 @@ export class Coach {
         break;
       case 'holdPause':
         if (!this.targetReached) {
-          this.say(this.picker.pick(this.def.hold?.lostCues ?? ['Get back into position']), 'bad', t, {
+          this.say(this.picker.pick(this.def?.hold?.lostCues ?? ['Get back into position']), 'bad', t, {
             priority: Priority.correction,
             interrupt: true,
           });
@@ -147,7 +158,7 @@ export class Coach {
         this.onHoldTick(e.seconds, t);
         break;
       case 'faultCleared':
-        if (this.def.kind === 'hold' && t - this.lastCorrectionAt > 1500) {
+        if (this.def?.kind === 'hold' && t - this.lastCorrectionAt > 1500) {
           this.say(this.picker.pick(['Better — hold it there.', "That's it, stay right there."]), 'good', t, {
             priority: Priority.chatter,
             ttlMs: 2000,
@@ -190,7 +201,7 @@ export class Coach {
       this.opts.sfx?.warn();
     } else {
       if (this.lastRepHadFault) parts.push(this.picker.pick(PHRASES.cleanAfterFault));
-      else if (this.cleanStreak % 3 === 2) parts.push(this.picker.pick(this.def.praise));
+      else if (this.cleanStreak % 3 === 2) parts.push(this.picker.pick(this.def?.praise ?? PHRASES.streak));
       else if (this.cleanStreak >= 5 && this.cleanStreak % 5 === 0) parts.push(this.picker.pick(PHRASES.streak));
       this.cleanStreak++;
       this.lastRepHadFault = false;
@@ -201,7 +212,7 @@ export class Coach {
   }
 
   private onPartial(rep: RepResult, t: number): void {
-    const cue = rep.faults.find((f) => f.id === this.def.rep?.shallow.id) ?? rep.faults[0];
+    const cue = rep.faults.find((f) => f.id === this.def?.rep?.shallow.id) ?? rep.faults[0];
     this.cleanStreak = 0;
     this.lastRepHadFault = true;
     this.opts.sfx?.warn();
@@ -229,6 +240,28 @@ export class Coach {
     this.cooldown.set(cue.id, t);
     this.lastCorrectionAt = t;
     this.spokenThisRep.add(cue.id);
+  }
+
+  // ---- recognising the exercise -------------------------------------------------------------
+
+  /** "Squats — got it! That's two." The reps so far were counted while we worked it out. */
+  private onRecognized(def: ExerciseDef, reps: number, holdMs: number, t: number): void {
+    this.def = def;
+    this.started = true;
+    this.hint = null;
+    let text: string;
+    if (def.kind === 'hold') {
+      this.holdStarted = holdMs > 0;
+      text = `${def.name} — got it! The timer's running, hold it.`;
+    } else {
+      const noun = def.repNoun ?? def.name;
+      const name = noun.charAt(0).toUpperCase() + noun.slice(1);
+      text =
+        reps > 0
+          ? `${name} — got it! That's ${countWord(reps).toLowerCase()}.`
+          : `${name} — got it. ${this.picker.pick(def.rep?.shallow.cues ?? PHRASES.ready)}`;
+    }
+    this.say(text, 'good', t, { priority: Priority.urgent, interrupt: true, key: 'count', ttlMs: 4000 });
   }
 
   // ---- holds --------------------------------------------------------------------------------

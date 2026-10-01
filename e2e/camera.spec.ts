@@ -10,6 +10,17 @@ test.use({
   },
 });
 
+test('Start training opens the camera straight away, ready to recognise any exercise', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start training' }).click();
+  await expect(page.locator('.overlay-center')).toHaveCount(0, { timeout: 90_000 });
+  await expect(page.getByRole('combobox', { name: 'Exercise' })).toHaveValue('');
+  await expect(page.locator('.hint')).toContainText(/can't see you|step into the frame/i);
+  expect(errors).toEqual([]);
+});
+
 test('the camera pipeline loads the model and guides an empty frame', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
