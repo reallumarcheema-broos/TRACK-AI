@@ -17,6 +17,10 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # Browser tests must never load real ads (Google counts robot views as invalid traffic).
       - run: npm run build
+        env:
+          VITE_ADSENSE_CLIENT: ''
+          VITE_ADSENSE_SLOT: ''
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
