@@ -1,6 +1,6 @@
 name: Redirect GitHub Pages
 
-# The site lives on Vercel now (the repository's "Website" address). This replaces the old copy on
+# The site lives at https://www.trackai.store now (hosted on Vercel). This replaces the old copy on
 # GitHub Pages (https://<owner>.github.io/<repo>/) with a page that sends visitors, links and search
 # engines to the same page there, and removes the old offline copy from browsers that saved it.
 # Runs when this file changes, or from the Actions tab (optionally with another address).
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: Where to send visitors, e.g. https://example.com (empty = the repository's website address)
+        description: Where to send visitors, e.g. https://example.com (empty = https://www.trackai.store)
         required: false
 
 permissions:
@@ -29,12 +29,12 @@ jobs:
     steps:
       - name: Write the redirect
         env:
-          TARGET: ${{ inputs.target || github.event.repository.homepage }}
+          TARGET: ${{ inputs.target || 'https://www.trackai.store' }}
           REPO: ${{ github.event.repository.name }}
         run: |
           TARGET="${TARGET%/}"
           if ! [[ "$TARGET" =~ ^https://[A-Za-z0-9.-]+$ ]]; then
-            echo "::error::Set the repository's website address (About → Website) to the new site, e.g. https://example.com"
+            echo "::error::The address to send visitors to must look like https://example.com"
             exit 1
           fi
           mkdir site
